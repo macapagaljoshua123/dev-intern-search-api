@@ -51,7 +51,7 @@ To point the frontend at a different backend, create `frontend/.env.local`:
 VITE_API_URL=http://127.0.0.1:8000
 ```
 
-## API Endpoints
+## Backend notes
 
 | Endpoint | Description |
 | --- | --- |
