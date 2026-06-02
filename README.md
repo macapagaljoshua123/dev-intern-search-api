@@ -1,6 +1,6 @@
 # dev-intern-search-api
 
-Lightweight web search project with a TypeScript React frontend and a Python FastAPI backend using DuckDuckGo (no API key required).
+Web Search API with a TypeScript React frontend and a Python FastAPI backend using DuckDuckGo (no API key required).
 
 ## Overview
 
