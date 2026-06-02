@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict
 from datetime import datetime
@@ -35,7 +35,30 @@ def search_web(query: str, max_results: int = 15) -> List[Dict]:
             
     except Exception as e:
         print(f"Search error: {e}")
-        return []
+        raise HTTPException(
+            status_code=502,
+            detail="Search provider failed. Please try again in a moment.",
+        ) from e
+
+
+def build_ai_summary(query: str, results: List[Dict]) -> str:
+    if not results:
+        return f"I could not find enough web results to summarize for '{query}'."
+
+    snippets = [
+        result["snippet"].strip()
+        for result in results[:5]
+        if result.get("snippet") and result["snippet"] != "No description available"
+    ]
+
+    if not snippets:
+        return f"I found sources for '{query}', but they did not include enough description text to summarize."
+
+    summary = " ".join(snippets)
+    if len(summary) > 700:
+        summary = f"{summary[:697].rstrip()}..."
+
+    return summary
 
 @app.get("/")
 def root():
@@ -45,6 +68,7 @@ def root():
         "description": "Free web search API for development",
         "endpoints": {
             "/search": "GET - Search the web",
+            "/ai-search": "GET - Search and generate a source-based summary",
             "/health": "GET - Check API status"
         },
         "example": "GET /search?q=michael jackson"
@@ -68,6 +92,24 @@ async def search(q: str = Query(..., min_length=1, description="Search query")):
         "results": results,
         "count": len(results),
         "source": "DuckDuckGo (Free API)"
+    }
+
+
+@app.get("/ai-search")
+async def ai_search(q: str = Query(..., min_length=1, description="Search query")):
+    """
+    Search the web and return a lightweight source-based summary.
+    This does not call a paid AI model; it summarizes the top snippets.
+    """
+    print(f"AI-style search for: {q}")
+    results = search_web(q, max_results=8)
+
+    return {
+        "query": q,
+        "answer": build_ai_summary(q, results),
+        "sources": results[:5],
+        "count": len(results),
+        "source": "DuckDuckGo snippets",
     }
 
 if __name__ == "__main__":

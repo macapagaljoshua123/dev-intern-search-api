@@ -1,53 +1,67 @@
-# dev-intern-search-api
+# Search API
 
-Web Search API with a TypeScript React frontend and a Python FastAPI backend using DuckDuckGo (no API key required).
+Full-stack web search app with a React + TypeScript frontend and a Python FastAPI backend.
 
-## Overview
-
-- **Frontend:** TypeScript + React (Vite) serving the UI.
-- **Backend:** FastAPI app that performs free DuckDuckGo searches via `ddgs` and returns JSON results.
+The backend searches DuckDuckGo through the free `ddgs` package. The AI Summary feature does not call a paid AI model; it creates a lightweight summary from the top search result snippets and returns those sources.
 
 ## Requirements
 
-- Node.js 18+
 - Python 3.12+
+- Node.js 18+
 
-## Quickstart
-
-1. Backend
+## Backend Setup
 
 ```powershell
 cd backend
 python -m venv venv
-venv\Scripts\activate   # Windows
+venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn app:app --reload --host 0.0.0.0 --port 8000
 ```
 
-2. Frontend
+Backend URL:
 
-```bash
+```txt
+http://127.0.0.1:8000
+```
+
+API docs:
+
+```txt
+http://127.0.0.1:8000/docs
+```
+
+## Frontend Setup
+
+```powershell
 cd frontend
 npm install
 npm run dev
 ```
 
-Open the frontend at http://localhost:5173 and the backend API at http://127.0.0.1:8000 (docs at /docs).
+Frontend URL:
 
-## API Endpoints
+```txt
+http://localhost:5173
+```
 
-- `GET /search?q=your+query` — Perform a web search and return results.
-- `GET /health` — Health check.
+To point the frontend at a different backend, create `frontend/.env.local`:
 
-Example: `http://127.0.0.1:8000/search?q=michael+jackson`
+```txt
+VITE_API_URL=http://127.0.0.1:8000
+```
 
 ## Backend notes
 
-- Search implementation uses the `ddgs` package (DuckDuckGo scraper). If you see `ModuleNotFoundError: ddgs`, run `pip install ddgs`.
-- Main backend file: [backend/app.py](backend/app.py)
+| Endpoint | Description |
+| --- | --- |
+| `GET /` | API overview |
+| `GET /health` | Backend health check |
+| `GET /search?q=query` | DuckDuckGo search results |
+| `GET /ai-search?q=query` | Source-based summary plus top sources |
 
-## Development
+## Notes
 
-- Edit backend code, then restart uvicorn (or use `--reload`).
-- Frontend uses Vite; changes are hot-reloaded by default.
-
+- If the frontend says the backend is unavailable, make sure the backend server is running on port `8000`.
+- If search fails, the backend now returns a clear API error instead of silently pretending there were no results.
+- Generated files such as virtual environments, `node_modules`, and Python cache folders are ignored by Git.
