@@ -16,8 +16,11 @@ Web search application with AI capabilities using free DuckDuckGo search API.
    cd backend
 
 2. Create virtual environment:
+
    python -m venv venv
-   venv\Scripts\activate    # Windows
+   
+   venv\Scripts\activate # Windows
+   
    source venv/bin/activate # WSL/Mac
 
 3. Install dependencies:
@@ -25,6 +28,20 @@ Web search application with AI capabilities using free DuckDuckGo search API.
 
 4. Start backend server:
    uvicorn app:app --reload --host 0.0.0.0 --port 8000
+
+Install these packages:
+pip install fastapi uvicorn ddgs httpx beautifulsoup4 python-dotenv
+
+
+
+requirements.txt:
+fastapi==0.104.1
+uvicorn==0.24.0
+ddgs==7.0.0
+httpx==0.25.1
+beautifulsoup4==4.12.2
+python-dotenv==1.0.0
+
 
 ### Frontend (TypeScript + React)
 
