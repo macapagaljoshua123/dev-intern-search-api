@@ -51,22 +51,6 @@ Web search application with AI capabilities using free DuckDuckGo search API.
 | GET /ai-search?q=question | AI search with sources |
 | GET /health | Check API status |
 
-## Project Structure
-
-dev-intern-search-api/
-├── backend/
-│   ├── app.py
-│   ├── requirements.txt
-│   └── venv/
-├── frontend/
-│   ├── src/
-│   │   ├── App.tsx
-│   │   ├── App.css
-│   │   └── main.tsx
-│   ├── package.json
-│   └── index.html
-└── README.md
-
 ## Common Issues
 
 - Module not found 'ddgs': Run pip install ddgs
