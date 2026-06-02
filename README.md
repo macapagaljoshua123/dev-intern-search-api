@@ -1,79 +1,67 @@
-# Search API with TypeScript Frontend + Python Backend
+# Search API
 
-Web search application with AI capabilities using free DuckDuckGo search API.
+Full-stack web search app with a React + TypeScript frontend and a Python FastAPI backend.
+
+The backend searches DuckDuckGo through the free `ddgs` package. The AI Summary feature does not call a paid AI model; it creates a lightweight summary from the top search result snippets and returns those sources.
 
 ## Requirements
 
-- TypeScript 5.2+
 - Python 3.12+
 - Node.js 18+
 
-## Setup
+## Backend Setup
 
-### Backend (Python)
+```powershell
+cd backend
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app:app --reload --host 0.0.0.0 --port 8000
+```
 
-1. Navigate to backend folder:
-   cd backend
+Backend URL:
 
-2. Create virtual environment:
+```txt
+http://127.0.0.1:8000
+```
 
-   python -m venv venv
-   
-   venv\Scripts\activate # Windows
-   
-   source venv/bin/activate # WSL/Mac
+API docs:
 
-3. Install dependencies:
-   pip install -r requirements.txt
+```txt
+http://127.0.0.1:8000/docs
+```
 
-4. Start backend server:
-   uvicorn app:app --reload --host 0.0.0.0 --port 8000
+## Frontend Setup
 
-Install these packages:
-pip install fastapi uvicorn ddgs httpx beautifulsoup4 python-dotenv
+```powershell
+cd frontend
+npm install
+npm run dev
+```
 
+Frontend URL:
 
+```txt
+http://localhost:5173
+```
 
-requirements.txt:
-fastapi==0.104.1
-uvicorn==0.24.0
-ddgs==7.0.0
-httpx==0.25.1
-beautifulsoup4==4.12.2
-python-dotenv==1.0.0
+To point the frontend at a different backend, create `frontend/.env.local`:
 
-
-### Frontend (TypeScript + React)
-
-1. Navigate to frontend folder:
-   cd frontend
-
-2. Install dependencies:
-   npm install
-
-3. Start frontend server:
-   npm run dev
-
-## Usage
-
-- Frontend: http://localhost:5173
-- Backend API: http://127.0.0.1:8000
-- API Documentation: http://127.0.0.1:8000/docs
+```txt
+VITE_API_URL=http://127.0.0.1:8000
+```
 
 ## API Endpoints
 
 | Endpoint | Description |
-|----------|-------------|
-| GET /search?q=query | Search the web |
-| GET /ai-search?q=question | AI search with sources |
-| GET /health | Check API status |
+| --- | --- |
+| `GET /` | API overview |
+| `GET /health` | Backend health check |
+| `GET /search?q=query` | DuckDuckGo search results |
+| `GET /ai-search?q=query` | Source-based summary plus top sources |
 
-## Common Issues
+## Notes
 
-- Module not found 'ddgs': Run pip install ddgs
-- Module not found 'axios': Run npm install axios
-- Connection refused on port 8000: Make sure backend is running
-- No search results: Check your internet connection
-
-Developer: Joshua Macapagal
-Collaborator: Ady
+- If the frontend says the backend is unavailable, make sure the backend server is running on port `8000`.
+- If search fails, the backend now returns a clear API error instead of silently pretending there were no results.
+- Generated files such as virtual environments, `node_modules`, and Python cache folders are ignored by Git.
