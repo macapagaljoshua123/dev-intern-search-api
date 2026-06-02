@@ -1,84 +1,60 @@
-# Search API with TypeScript Frontend + Python Backend
+# dev-intern-search-api
 
-Web search application with AI capabilities using free DuckDuckGo search API.
+Lightweight web search project with a TypeScript React frontend and a Python FastAPI backend using DuckDuckGo (no API key required).
+
+## Overview
+
+- **Frontend:** TypeScript + React (Vite) serving the UI.
+- **Backend:** FastAPI app that performs free DuckDuckGo searches via `ddgs` and returns JSON results.
 
 ## Requirements
 
-- TypeScript 5.2+
-- Python 3.12+
 - Node.js 18+
+- Python 3.12+
 
-## Setup
+## Quickstart
 
-### Backend (Python)
+1. Backend
 
-1. Navigate to backend folder:
+```powershell
 cd backend
-
-
-2. Create virtual environment:
 python -m venv venv
-venv\Scripts\activate # Windows
-source venv/bin/activate # WSL/Mac
-
-
-3. Install dependencies:
+venv\Scripts\activate   # Windows
 pip install -r requirements.txt
-
-
-Or install manually:
-pip install fastapi uvicorn ddgs httpx beautifulsoup4 python-dotenv
-
-
-4. Start backend server:
 uvicorn app:app --reload --host 0.0.0.0 --port 8000
+```
 
+2. Frontend
 
-### Frontend (TypeScript + React)
-
-1. Navigate to frontend folder:
+```bash
 cd frontend
-
-
-2. Install dependencies:
 npm install
-
-
-3. Start frontend server:
 npm run dev
+```
 
-
-## Usage
-
-Open in browser:
-- Frontend: http://localhost:5173
-- Backend API: http://127.0.0.1:8000
-- API Docs: http://127.0.0.1:8000/docs
+Open the frontend at http://localhost:5173 and the backend API at http://127.0.0.1:8000 (docs at /docs).
 
 ## API Endpoints
 
-| Endpoint | Description |
-|----------|-------------|
-| GET /search?q=query | Search the web |
-| GET /ai-search?q=question | AI search with sources |
-| GET /health | Check API status |
+- `GET /search?q=your+query` — Perform a web search and return results.
+- `GET /health` — Health check.
 
-## requirements.txt
-fastapi==0.104.1
-uvicorn==0.24.0
-ddgs==7.0.0
-httpx==0.25.1
-beautifulsoup4==4.12.2
-python-dotenv==1.0.0
+Example: `http://127.0.0.1:8000/search?q=michael+jackson`
 
+## Backend notes
 
-## Common Issues
+- Search implementation uses the `ddgs` package (DuckDuckGo scraper). If you see `ModuleNotFoundError: ddgs`, run `pip install ddgs`.
+- Main backend file: [backend/app.py](backend/app.py)
 
-- **Module not found 'ddgs'**: Run `pip install ddgs`
-- **Module not found 'axios'**: Run `npm install axios`
-- **Connection refused on port 8000**: Make sure backend is running
-- **No search results**: Check your internet connection
+## Development
+
+- Edit backend code, then restart uvicorn (or use `--reload`).
+- Frontend uses Vite; changes are hot-reloaded by default.
+
+## Contributing
+
+If you'd like me to update README further (translate to Filipino, add screenshots, or include CI instructions), tell me what to include and I’ll update it.
 
 ---
 
-Developer: Joshua Macapagal | Collaborator: Ady
+Developer: Joshua Macapagal
