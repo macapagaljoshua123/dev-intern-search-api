@@ -1,61 +1,78 @@
 # Search API with TypeScript Frontend + Python Backend
 
-A full-stack web search application with AI capabilities. Features a free web search API (DuckDuckGo) and an intelligent AI assistant that provides detailed answers with source citations.
+Web search application with AI capabilities using free DuckDuckGo search API.
 
-## Table of Contents
+## Requirements
 
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-  - [Backend Setup (Python)](#backend-setup-python)
-  - [Frontend Setup (TypeScript)](#frontend-setup-typescript)
-- [Running the Application](#running-the-application)
-- [API Endpoints](#api-endpoints)
-- [Project Structure](#project-structure)
-- [Usage Examples](#usage-examples)
-- [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
+- TypeScript 5.2+
+- Python 3.12+
+- Node.js 18+
 
-## Features
+## Setup
 
-- **Free Web Search API** - No API key required (powered by DuckDuckGo)
-- **TypeScript Frontend** - Modern React with TypeScript
-- **Python Backend** - FastAPI for high performance
-- **AI Assistant Mode** - Detailed answers with source citations (RRL format)
-- **Conversation Memory** - Maintains chat context
-- **Real-time Search** - Live web search results
-- **Responsive Design** - Works on desktop and mobile
+### Backend (Python)
 
-## Tech Stack
+1. Navigate to backend folder:
+   cd backend
 
-| Layer           | Technology                   |
-| --------------- | ---------------------------- |
-| **Frontend**    | React 18 + TypeScript + Vite |
-| **Backend**     | Python 3.12+ + FastAPI       |
-| **Search API**  | DuckDuckGo (via ddgs)        |
-| **HTTP Client** | Axios                        |
-| **Styling**     | CSS3 (Custom)                |
-| **Markdown**    | React Markdown               |
+2. Create virtual environment:
+   python -m venv venv
+   venv\Scripts\activate    # Windows
+   source venv/bin/activate # WSL/Mac
 
-## 📦 Prerequisites
+3. Install dependencies:
+   pip install -r requirements.txt
 
-Make sure you have the following installed:
+4. Start backend server:
+   uvicorn app:app --reload --host 0.0.0.0 --port 8000
 
-| Requirement             | Version | Check Command       |
-| ----------------------- | ------- | ------------------- |
-| **Node.js**             | v18+    | `node --version`    |
-| **npm**                 | v9+     | `npm --version`     |
-| **Python**              | 3.12+   | `python3 --version` |
-| **Git**                 | Latest  | `git --version`     |
-| **WSL** (Windows users) | 2.0+    | `wsl --version`     |
+### Frontend (TypeScript + React)
 
-### For Windows Users (WSL Setup)
+1. Navigate to frontend folder:
+   cd frontend
 
-This project uses WSL for the Python backend. If you don't have WSL installed:
+2. Install dependencies:
+   npm install
 
-```bash
-# Open PowerShell as Administrator
-wsl --install
-# Restart your computer after installation
-```
+3. Start frontend server:
+   npm run dev
+
+## Usage
+
+- Frontend: http://localhost:5173
+- Backend API: http://127.0.0.1:8000
+- API Documentation: http://127.0.0.1:8000/docs
+
+## API Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| GET /search?q=query | Search the web |
+| GET /ai-search?q=question | AI search with sources |
+| GET /health | Check API status |
+
+## Project Structure
+
+dev-intern-search-api/
+├── backend/
+│   ├── app.py
+│   ├── requirements.txt
+│   └── venv/
+├── frontend/
+│   ├── src/
+│   │   ├── App.tsx
+│   │   ├── App.css
+│   │   └── main.tsx
+│   ├── package.json
+│   └── index.html
+└── README.md
+
+## Common Issues
+
+- Module not found 'ddgs': Run pip install ddgs
+- Module not found 'axios': Run npm install axios
+- Connection refused on port 8000: Make sure backend is running
+- No search results: Check your internet connection
+
+Developer: Joshua Macapagal
+Collaborator: Ady
