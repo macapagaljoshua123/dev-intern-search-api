@@ -1,0 +1,79 @@
+{
+  "id": "badee8fd-352d-4cd0-95ff-d4aecb8e4d87",
+  "title": "hello",
+  "messages": [
+    {
+      "id": "643f945d-11d6-48e7-b6ee-563dac9592d4",
+      "type": "user",
+      "content": "hello",
+      "sources": null,
+      "sourceType": null,
+      "timestamp": "2026-06-03T08:16:33.353Z"
+    },
+    {
+      "id": "6f1d7d07-8701-416b-bf69-7834401a240a",
+      "type": "ai",
+      "content": "",
+      "sources": null,
+      "sourceType": null,
+      "timestamp": "2026-06-03T08:16:33.399Z"
+    },
+    {
+      "id": "99f11c8c-a8f3-4b89-82b2-af521768a8a4",
+      "type": "ai",
+      "content": "Error connecting to AI. Please make sure the backend is running and try again.",
+      "sources": null,
+      "sourceType": null,
+      "timestamp": "2026-06-03T08:16:41.965Z"
+    },
+    {
+      "id": "1cbb7f33-b6b2-4bd7-84ed-59f151d21944",
+      "type": "user",
+      "content": "hello world",
+      "sources": null,
+      "sourceType": null,
+      "timestamp": "2026-06-03T08:22:58.088Z"
+    },
+    {
+      "id": "7c9c65cf-42da-49a5-8bce-9605fd944da2",
+      "type": "ai",
+      "content": "## Hello world\n\n- A \"Hello, world\" program is usually a simple computer program that displays on the screen (often the console) a message similar to \"Hello, world\".\n- A small piece of code in most general-purpose programming languages, this program is used to illustrate a language's basic syntax.\n- Such a program is often the first written by a student of a new programming language, but it can also be used as a sanity check to ensure that the computer software intended to compile or run source code is correctly installed, and that its operator understands how to use it.\n- Hello World: The Motown Solo Collection is a three-disc compilation album by American singer Michael Jackson, released on September 1, 2009 (posthumously, shortly after his death on June 25, 2009), by Hip-O Select and Motown Records.\n- Apr 21, 2026 · As described in more detail in the related Wikipedia article, Hello, world!\n- is a classic \"first program\" one creates when learning a new programming language.\n- The objective of the application is the same: to print the text \"Hello, world!\" to the screen in some form, be it console output or a dialog.\n- Hello-world.com: Learn languages with games, songs and vocabulary, Total immersion, Serious fun!\n- In this example, we will learn to create a simple program named \"Hello World\" in C++ programming.\n- A \"Hello, World!\" is a simple program that outputs Hello, World!\n\n\n**Sources:**\n\n- [Hello, world](https://en.wikipedia.org/wiki/Hello,_world)\n\n- [Hello World: The Motown Solo Collection](https://grokipedia.com/page/hello_world_the_motown_solo_collection)\n\n- [Hello, world! - Wikiversity](https://en.wikiversity.org/wiki/Hello,_world!)\n\n- [Total immersion, Serious fun! with Hello-World!](https://www.hello-world.com/)\n\n- [C++ \"Hello, World!\" Program](https://www.programiz.com/cpp-programming/examples/print-sentence) ",
+      "sources": [
+        {
+          "title": "Hello, world",
+          "url": "https://en.wikipedia.org/wiki/Hello,_world",
+          "snippet": "A \"Hello, world\" program is usually a simple computer program that displays on the screen (often the console) a message similar to \"Hello, world\". A small piece of code in most general-purpose programming languages, this program is used to illustrate a language's basic syntax. Such a program is often the first written by a student of a new programming language, but it can also be used as a sanity check to ensure that the computer software intended to compile or run source code is correctly installed, and that its operator understands how to use it.",
+          "source": "en.wikipedia.org"
+        },
+        {
+          "title": "Hello World: The Motown Solo Collection",
+          "url": "https://grokipedia.com/page/hello_world_the_motown_solo_collection",
+          "snippet": "Hello World: The Motown Solo Collection is a three-disc compilation album by American singer Michael Jackson, released on September 1, 2009 (posthumously, shortly after his death on June 25, 2009), by Hip-O Select and Motown Records. It features 71…",
+          "source": "grokipedia.com"
+        },
+        {
+          "title": "Hello, world! - Wikiversity",
+          "url": "https://en.wikiversity.org/wiki/Hello,_world!",
+          "snippet": "Apr 21, 2026 · As described in more detail in the related Wikipedia article, Hello, world! is a classic \"first program\" one creates when learning a new programming language. The objective of the application is the same: to print the text \"Hello, world!\" to the screen in some form, be it console output or a dialog.",
+          "source": "en.wikiversity.org"
+        },
+        {
+          "title": "Total immersion, Serious fun! with Hello-World!",
+          "url": "https://www.hello-world.com/",
+          "snippet": "What language do you want to learn? Hello-world.com: Learn languages with games, songs and vocabulary, Total immersion, Serious fun! with Hello-World!",
+          "source": "www.hello-world.com"
+        },
+        {
+          "title": "C++ \"Hello, World!\" Program",
+          "url": "https://www.programiz.com/cpp-programming/examples/print-sentence",
+          "snippet": "In this example, we will learn to create a simple program named \"Hello World\" in C++ programming. A \"Hello, World!\" is a simple program that outputs Hello, World! on the screen.",
+          "source": "www.programiz.com"
+        }
+      ],
+      "sourceType": "Web Search",
+      "timestamp": "2026-06-03T08:22:58.102Z"
+    }
+  ],
+  "created_at": "2026-06-03T16:23:09.185650",
+  "updated_at": "2026-06-03T16:23:09.185650"
+}
