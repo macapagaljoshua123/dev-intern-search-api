@@ -1269,24 +1269,72 @@ def search_web(query: str, max_results: int = 5) -> List[Dict]:
         return []
 
 def format_answer_with_sources(query: str, results: List[Dict]) -> tuple:
-    """Format web search results with sources"""
+    """Use Claude to synthesize a complete, well-formatted answer from web results."""
     if not results:
-        return f"I searched the web for '{summarize_question(query)}' but couldn't find relevant information.", []
-    
-    answer_parts = [f"Based on my web search for: **{summarize_question(query)}**\n"]
-    
-    for i, result in enumerate(results[:3], 1):
-        snippet = result['snippet']
-        source_name = result['source'].replace('www.', '')
-        answer_parts.append(f"\n**Source {i}: {result['title']}** ({source_name})")
-        answer_parts.append(f"\n{snippet[:250]}...")
-    
-    answer_parts.append("\n\n---\n")
-    answer_parts.append("\n📚 **All Sources:**")
-    for result in results:
-        answer_parts.append(f"\n• [{result['title']}]({result['url']})")
-    
-    return ''.join(answer_parts), results
+        return f"I searched the web for '{summarize_question(query)}' but couldn't find relevant information. Try rephrasing your question.", []
+
+    # Build context from top results
+    context_parts = []
+    for i, r in enumerate(results[:5], 1):
+        context_parts.append(f"[Source {i}] {r['title']}\nURL: {r['url']}\n{r['snippet']}\n")
+    context = "\n".join(context_parts)
+
+    # Try Claude API synthesis first
+    if _HAS_ANTHROPIC and _anthropic_client:
+        try:
+            system_prompt = """You are a knowledgeable AI assistant. Given web search results, synthesize a comprehensive, well-structured answer.
+
+FORMATTING RULES — follow exactly:
+- Start with a short 1-2 sentence definition/overview
+- Use ## for main section headings
+- Use **bold** for key terms
+- Use bullet lists (- item) for features, pros/cons, or enumerations
+- Use numbered lists (1. step) for sequential steps
+- Always include a ## Example section with a real, runnable code example if the topic is technical
+- Always include an ## According to Sources section summarizing what the sources say
+- Keep the answer thorough but scannable — aim for 250-400 words
+- End with a ## Key Takeaway one-liner
+
+Do NOT add a Sources list at the end — that is handled separately."""
+
+            user_prompt = f"""Question: {query}
+
+Web search results:
+{context}
+
+Write a complete, well-formatted answer using the formatting rules."""
+
+            message = _anthropic_client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=1200,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_prompt}]
+            )
+            answer = message.content[0].text
+            return answer, results
+        except Exception as e:
+            print(f"Claude API error, falling back to snippet summary: {e}")
+
+    # Fallback: clean snippet summary
+    summary_lines = []
+    seen = set()
+    for r in results[:5]:
+        for s in re.split(r'(?<=[.!?])\s+', r.get('snippet', '')):
+            s = s.strip()
+            if len(s) > 40 and s not in seen:
+                seen.add(s)
+                summary_lines.append(s)
+            if len(summary_lines) >= 10:
+                break
+        if len(summary_lines) >= 10:
+            break
+
+    answer_parts = [f"## {summarize_question(query)}\n"]
+    answer_parts.append("\n".join(f"- {s}" for s in summary_lines))
+    answer_parts.append("\n\n**Sources:**")
+    for r in results[:5]:
+        answer_parts.append(f"\n- [{r['title']}]({r['url']})")
+    return "\n".join(answer_parts), results
 
 # ============================================================
 # PART 3: MAIN AI RESPONSE ENGINE
@@ -1426,55 +1474,67 @@ async def chat(message: str = Query(..., min_length=1, description="Your questio
 
 @app.get("/chat-stream")
 async def chat_stream(message: str = Query(..., min_length=1, description="Your question")):
-    """Streaming chat endpoint"""
+    """Streaming chat endpoint with step-by-step loading indicators"""
     print(f"📝 Received (streaming): {message}")
-    response = ai_respond(message)
-    
+
     async def generate():
-        # Send metadata
-        metadata = {
-            "type": "metadata",
-            "question": message,
-            "question_summary": summarize_question(message),
-            "from_web_search": response["from_web_search"],
-            "source_type": response["source_type"],
-            "done": False
-        }
-        yield f"data: {json.dumps(metadata)}\n\n"
-        
-        # Status indicators
-        if response["from_web_search"]:
-            status = {"type": "status", "status": "🔍 Searching the web...", "done": False}
-            yield f"data: {json.dumps(status)}\n\n"
-            await asyncio.sleep(0.3)
+        # Step 1: Metadata — immediately tell frontend we received the message
+        yield f"data: {json.dumps({'type': 'status', 'status': 'Thinking...', 'done': False})}\n\n"
+        await asyncio.sleep(0.05)
+
+        # Step 2: Check knowledge base / decide if we need web search
+        best_topic, confidence = find_best_match(message)
+        is_time_sensitive = should_search_web(message, best_topic is not None)
+        use_web = not best_topic or is_time_sensitive
+
+        if use_web:
+            yield f"data: {json.dumps({'type': 'status', 'status': 'Searching the web...', 'done': False})}\n\n"
+            await asyncio.sleep(0.05)
+
+            results = await asyncio.to_thread(search_web, message)
+
+            if results:
+                yield f"data: {json.dumps({'type': 'status', 'status': 'Scraping web data...', 'done': False})}\n\n"
+                await asyncio.sleep(0.1)
+
+                yield f"data: {json.dumps({'type': 'status', 'status': 'Synthesizing answer with AI...', 'done': False})}\n\n"
+                await asyncio.sleep(0.05)
+
+                answer, sources = await asyncio.to_thread(format_answer_with_sources, message, results)
+                source_type = "Web Search"
+            else:
+                if best_topic:
+                    answer = AI_KNOWLEDGE[best_topic]["answer"]
+                    sources = []
+                    source_type = "Knowledge Base (Web unavailable)"
+                else:
+                    answer = f"I couldn't find information about '{summarize_question(message)}'. Try rephrasing your question."
+                    sources = []
+                    source_type = "No Match"
         else:
-            status = {"type": "status", "status": "💭 Using knowledge base...", "done": False}
-            yield f"data: {json.dumps(status)}\n\n"
-            await asyncio.sleep(0.2)
-        
-        # Stream answer
-        answer = response["answer"]
-        chunks = answer.split(' ')
-        
-        for chunk in chunks:
-            text_chunk = {"type": "text", "content": chunk + " ", "done": False}
+            yield f"data: {json.dumps({'type': 'status', 'status': 'Using knowledge base...', 'done': False})}\n\n"
+            await asyncio.sleep(0.1)
+            answer = AI_KNOWLEDGE[best_topic]["answer"]
+            sources = []
+            source_type = "Knowledge Base"
+
+        # Send metadata so frontend knows source type
+        yield f"data: {json.dumps({'type': 'metadata', 'source_type': source_type, 'from_web_search': use_web, 'done': False})}\n\n"
+
+        # Stream the answer word by word
+        words = answer.split(' ')
+        for word in words:
+            text_chunk = {"type": "text", "content": word + " ", "done": False}
             yield f"data: {json.dumps(text_chunk)}\n\n"
-            await asyncio.sleep(0.01)
-        
-        # Sources
-        if response["sources"]:
-            sources_chunk = {"type": "sources", "sources": response["sources"], "done": False}
-            yield f"data: {json.dumps(sources_chunk)}\n\n"
-        
+            await asyncio.sleep(0.012)
+
+        # Send sources
+        if sources:
+            yield f"data: {json.dumps({'type': 'sources', 'sources': sources, 'done': False})}\n\n"
+
         # Done
-        done_chunk = {
-            "type": "done",
-            "confidence": response["confidence"],
-            "source_type": response["source_type"],
-            "done": True
-        }
-        yield f"data: {json.dumps(done_chunk)}\n\n"
-    
+        yield f"data: {json.dumps({'type': 'done', 'source_type': source_type, 'done': True})}\n\n"
+
     return StreamingResponse(generate(), media_type="text/event-stream")
 
 # ============================================================
