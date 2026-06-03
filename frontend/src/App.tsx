@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios, { AxiosError } from "axios";
 import "./App.css";
 
@@ -10,6 +10,31 @@ interface SearchResult {
 
 type SearchMode = "search" | "ai";
 
+interface SearchHistoryItem {
+  id: string;
+  mode: SearchMode;
+  query: string;
+  searchedAt: number;
+}
+
+const HISTORY_STORAGE_KEY = "search-api-history";
+const MAX_HISTORY_ITEMS = 8;
+
+const getInitialHistory = (): SearchHistoryItem[] => {
+  const savedHistory = window.localStorage.getItem(HISTORY_STORAGE_KEY);
+
+  if (!savedHistory) {
+    return [];
+  }
+
+  try {
+    return JSON.parse(savedHistory) as SearchHistoryItem[];
+  } catch {
+    window.localStorage.removeItem(HISTORY_STORAGE_KEY);
+    return [];
+  }
+};
+
 function App() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -19,8 +44,13 @@ function App() {
   const [resultCount, setResultCount] = useState(0);
   const [submittedQuery, setSubmittedQuery] = useState("");
   const [mode, setMode] = useState<SearchMode>("search");
+  const [history, setHistory] = useState<SearchHistoryItem[]>(getInitialHistory);
 
   const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+
+  useEffect(() => {
+    window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
+  }, [history]);
 
   const getErrorMessage = (err: unknown) => {
     if (axios.isAxiosError(err)) {
@@ -35,14 +65,33 @@ function App() {
     return "Connection error. Make sure the backend is running.";
   };
 
-  const handleSearch = async (nextMode: SearchMode = mode) => {
-    const trimmedQuery = query.trim();
+  const addSearchHistory = (searchQuery: string, searchMode: SearchMode) => {
+    const id = `${searchMode}:${searchQuery.toLowerCase()}`;
+
+    setHistory((currentHistory) => {
+      const nextItem: SearchHistoryItem = {
+        id,
+        mode: searchMode,
+        query: searchQuery,
+        searchedAt: Date.now(),
+      };
+
+      return [
+        nextItem,
+        ...currentHistory.filter((item) => item.id !== id),
+      ].slice(0, MAX_HISTORY_ITEMS);
+    });
+  };
+
+  const runSearch = async (searchQuery: string, nextMode: SearchMode) => {
+    const trimmedQuery = searchQuery.trim();
 
     if (!trimmedQuery) {
       setError("Please enter a search term");
       return;
     }
 
+    setQuery(trimmedQuery);
     setMode(nextMode);
     setLoading(true);
     setError("");
@@ -59,12 +108,21 @@ function App() {
       setAnswer(res.data.answer || "");
       setResults(res.data.results || res.data.sources || []);
       setResultCount(res.data.count || 0);
+      addSearchHistory(trimmedQuery, nextMode);
     } catch (err: unknown) {
       setError(getErrorMessage(err));
       console.error(err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSearch = (nextMode: SearchMode = mode) => {
+    void runSearch(query, nextMode);
+  };
+
+  const handleHistorySearch = (item: SearchHistoryItem) => {
+    void runSearch(item.query, item.mode);
   };
 
   const handleClear = () => {
@@ -76,6 +134,10 @@ function App() {
     setResultCount(0);
     setSubmittedQuery("");
     setMode("search");
+  };
+
+  const handleClearHistory = () => {
+    setHistory([]);
   };
 
   const hasSearchState =
@@ -93,7 +155,14 @@ function App() {
 
       <div className="search-container">
         <div className="search-box">
-          <input type="text" className="search-input" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleSearch()} placeholder="Search the web... (e.g., internships, latest news, technology)"/>
+          <input
+            type="text"
+            className="search-input"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            placeholder="Search the web..."
+          />
           <button
             className="action-button search-button"
             onClick={() => handleSearch("search")}
@@ -121,6 +190,32 @@ function App() {
             </button>
           )}
         </div>
+
+        {history.length > 0 && (
+          <section className="history-panel" aria-label="Search history">
+            <div className="history-header">
+              <h2>Recent Searches</h2>
+              <button onClick={handleClearHistory} disabled={loading}>
+                Clear history
+              </button>
+            </div>
+            <div className="history-list">
+              {history.map((item) => (
+                <button
+                  key={item.id}
+                  className="history-item"
+                  onClick={() => handleHistorySearch(item)}
+                  disabled={loading}
+                >
+                  <span className="history-query">{item.query}</span>
+                  <span className="history-mode">
+                    {item.mode === "ai" ? "Summary" : "Search"}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
 
       {error && <div className="error-message">{error}</div>}
