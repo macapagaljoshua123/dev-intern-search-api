@@ -2,10 +2,26 @@ import { useEffect, useState } from "react";
 import axios, { AxiosError } from "axios";
 import "./App.css";
 
-interface SearchResult {
+interface Message {
+  id: string;
+  type: "user" | "ai";
+  content: string;
+  sources?: Array<{
+    title: string;
+    url: string;
+    snippet: string;
+    source: string;
+  }>;
+  sourceType?: string; // NEW: Track where answer came from
+  timestamp: Date;
+  isStreaming?: boolean;
+}
+
+interface Source {
   title: string;
   url: string;
   snippet: string;
+  source: string;
 }
 
 type SearchMode = "search" | "ai";
@@ -62,7 +78,8 @@ function App() {
       );
     }
 
-    return "Connection error. Make sure the backend is running.";
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   const addSearchHistory = (searchQuery: string, searchMode: SearchMode) => {
@@ -86,18 +103,20 @@ function App() {
   const runSearch = async (searchQuery: string, nextMode: SearchMode) => {
     const trimmedQuery = searchQuery.trim();
 
-    if (!trimmedQuery) {
-      setError("Please enter a search term");
-      return;
-    }
+  const handleSendMessage = async () => {
+    if (!input.trim()) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      type: "user",
+      content: input,
+      timestamp: new Date(),
+    };
 
     setQuery(trimmedQuery);
     setMode(nextMode);
     setLoading(true);
-    setError("");
-    setResults([]);
-    setAnswer("");
-    setSubmittedQuery(trimmedQuery);
+    setStatusMessage("");
 
     try {
       const endpoint = nextMode === "ai" ? "/ai-search" : "/search";
@@ -114,6 +133,7 @@ function App() {
       console.error(err);
     } finally {
       setLoading(false);
+      setStatusMessage("");
     }
   };
 
@@ -143,15 +163,12 @@ function App() {
   const hasSearchState =
     query || submittedQuery || results.length > 0 || answer || error;
 
-  return (
-    <div className="app">
-      <header>
-        <h1>Search API</h1>
-        <p className="subtitle">Free Web Search | Powered by DuckDuckGo</p>
-        <p className="subtitle-small">
-          No API key required | For development only
-        </p>
-      </header>
+        <main className="landing-main">
+          <div className="hero-content">
+            <h1 className="hero-title">
+              Chat with AI That{" "}
+              <span className="gradient-text">Thinks Like Humans</span>
+            </h1>
 
       <div className="search-container">
         <div className="search-box">
@@ -218,79 +235,156 @@ function App() {
         )}
       </div>
 
-      {error && <div className="error-message">{error}</div>}
+        <footer className="landing-footer">
+          <p>Created by Joshua Macapagal & Ady</p>
+        </footer>
+      </div>
+    );
+  }
 
-      {loading && (
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Searching the web for "{submittedQuery}"...</p>
+  // Chat Page
+  return (
+    <div className="chat-container">
+      <div className="chat-header">
+        <div className="header-content">
+          <button className="back-button" onClick={() => setPage("landing")}>
+            ← Back
+          </button>
+          <h1>AI Assistant</h1>
+          <div className="header-status">
+            {statusMessage && (
+              <span className="status-indicator active">{statusMessage}</span>
+            )}
+          </div>
         </div>
-      )}
+      </div>
 
-      {answer && !loading && (
-        <section className="answer-container">
-          <div className="results-header">
-            <h3>AI Summary</h3>
-            <span className="result-count">Based on top sources</span>
+      <div className="messages-area">
+        {messages.length === 0 && (
+          <div className="empty-state">
+            <div className="empty-icon">💬</div>
+            <h2>Welcome!</h2>
+            <p>Ask me anything! I have knowledge about many topics.</p>
+            <div className="suggested-questions">
+              <button onClick={() => setInput("What is photosynthesis?")}>
+                What is photosynthesis?
+              </button>
+              <button onClick={() => setInput("Tell me about Albert Einstein")}>
+                Tell me about Albert Einstein
+              </button>
+              <button
+                onClick={() => setInput("How does machine learning work?")}
+              >
+                How does machine learning work?
+              </button>
+              <button onClick={() => setInput("Latest AI news 2026")}>
+                Latest AI news 2026
+              </button>
+            </div>
           </div>
-          <p>{answer}</p>
-        </section>
-      )}
+        )}
 
-      {results.length > 0 && !loading && (
-        <div className="results-container">
-          <div className="results-header">
-            <h3>{mode === "ai" ? "Sources" : "Search Results"}</h3>
-            <span className="result-count">About {resultCount} results</span>
-          </div>
-
-          <div className="results-list">
-            {results.map((result, index) => (
-              <div key={index} className="result-item">
-                <a
-                  href={result.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="result-title"
+        {messages.map((message) => (
+          <div
+            key={message.id}
+            className={`message-wrapper ${message.type === "user" ? "user" : "ai"}`}
+          >
+            <div className={`message-bubble ${message.type}`}>
+              {/* NEW: Source type badge */}
+              {message.type === "ai" && message.sourceType && (
+                <div
+                  className={`source-badge ${
+                    message.sourceType.includes("Web")
+                      ? "web-search"
+                      : "knowledge-base"
+                  }`}
                 >
-                  {result.title}
-                </a>
-                <div className="result-url">{result.url}</div>
-                <p className="result-snippet">{result.snippet}</p>
+                  {message.sourceType.includes("Web")
+                    ? "🔍 Web Search"
+                    : "📚 Knowledge Base"}
+                </div>
+              )}
+
+              <div className="message-content">
+                {message.isStreaming && (
+                  <span className="typing-indicator"></span>
+                )}
+                {message.content && (
+                  <div className="message-text">
+                    {message.content.split("\n").map((line, idx) => (
+                      <p key={idx}>{line}</p>
+                    ))}
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
-        </div>
-      )}
 
-      {results.length === 0 && !loading && !error && submittedQuery && (
-        <div className="no-results">
-          <p>No results found for "{submittedQuery}"</p>
-          <p className="hint">Try different keywords or check your spelling</p>
-        </div>
-      )}
-
-      {!submittedQuery && !loading && results.length === 0 && (
-        <div className="welcome-message">
-          <div className="welcome-icon"></div>
-          <h3>Start searching</h3>
-          <p>Enter a search term above to search the web</p>
-          <div className="example-queries">
-            <p>Try:</p>
-            <button onClick={() => setQuery("Software engineering internships")}>
-              Software internships
-            </button>
-            <button onClick={() => setQuery("Latest technology news 2026")}>
-              Latest technology news
-            </button>
-            <button onClick={() => setQuery("What is artificial intelligence")}>
-              What is AI
-            </button>
+              {message.sources && message.sources.length > 0 && (
+                <div className="message-sources">
+                  <div className="sources-title">📚 Sources:</div>
+                  {message.sources.map((source, idx) => (
+                    <a
+                      key={idx}
+                      href={source.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="source-link"
+                      title={source.snippet}
+                    >
+                      <span className="source-favicon">🔗</span>
+                      <span className="source-text">{source.title}</span>
+                      <span className="source-domain">({source.source})</span>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        ))}
+
+        {statusMessage && (
+          <div className="message-wrapper ai">
+            <div className="message-bubble ai">
+              <div className="message-content">
+                <div className="status-message">
+                  <span>{statusMessage}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      <div className="input-area">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSendMessage();
+          }}
+          className="input-form"
+        >
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask me anything..."
+            disabled={loading}
+            className="chat-input"
+          />
+          <button
+            type="submit"
+            disabled={loading || !input.trim()}
+            className="send-button"
+          >
+            {loading ? "⏳" : "📤"}
+          </button>
+        </form>
+        <p className="input-hint">
+          I'll answer from my knowledge base, and search the web for the latest
+          info when needed
+        </p>
+      </div>
     </div>
   );
 }
-
-export default App;
