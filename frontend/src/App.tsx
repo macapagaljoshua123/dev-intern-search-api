@@ -462,84 +462,170 @@ export default function App() {
           <div className="blob blob-1"></div>
           <div className="blob blob-2"></div>
           <div className="blob blob-3"></div>
+          <div className="grid-overlay"></div>
         </div>
 
+        {/* ── Navigation ─────────────────────────────────────────────── */}
         <header className="landing-header">
           <div className="logo">
-            <span className="logo-icon">
+            <div className="logo-icon-wrapper">
               <BotIcon />
-            </span>
+            </div>
             <span className="logo-text">AI Assistant</span>
           </div>
+          <nav className="landing-nav">
+            <span className="nav-status">
+              <span className="status-dot"></span>
+              Online
+            </span>
+            <button className="nav-cta" onClick={() => setPage("chat")}>
+              Open Chat →
+            </button>
+          </nav>
         </header>
 
+        {/* ── Hero Section ───────────────────────────────────────────── */}
         <main className="landing-main">
           <div className="hero-content">
+            <div className="hero-badge">
+              <span className="badge-dot"></span>
+              Powered by Knowledge Base + Web Search
+            </div>
+
             <h1 className="hero-title">
-              Chat with AI That{" "}
-              <span className="gradient-text">Thinks Like Humans</span>
+              Your AI That{" "}
+              <span className="gradient-text">Actually Knows Things</span>
             </h1>
+
             <p className="hero-subtitle">
-              I have my own knowledge base like Claude and Gemini. I answer from
-              what I know first, and only search the web when I need the latest
-              information. Fast, accurate, reliable.
+              Built with a <strong>50+ topic knowledge base</strong> that
+              answers instantly from memory. When you need the latest info, it
+              automatically searches the web and synthesizes the results.
             </p>
 
-            <div className="features-grid">
-              <div className="feature-card">
-                <div className="feature-icon">
-                  <KnowledgeIcon />
-                </div>
-                <h3>Smart Knowledge Base</h3>
-                <p>50+ topics of built-in expertise</p>
+            {/* Stats Row */}
+            <div className="hero-stats">
+              <div className="stat-item">
+                <span className="stat-number">50+</span>
+                <span className="stat-label">Knowledge Topics</span>
               </div>
-              <div className="feature-card">
-                <div className="feature-icon">⚡</div>
-                <h3>Instant Answers</h3>
-                <p>Responds from memory first</p>
+              <div className="stat-divider"></div>
+              <div className="stat-item">
+                <span className="stat-number">&lt;1s</span>
+                <span className="stat-label">Response Time</span>
               </div>
-              <div className="feature-card">
-                <div className="feature-icon">
-                  <WebSearchIcon />
-                </div>
-                <h3>Web When Needed</h3>
-                <p>Searches only for latest info</p>
-              </div>
-              <div className="feature-card">
-                <div className="feature-icon">
-                  <ChatIcon />
-                </div>
-                <h3>Chat History</h3>
-                <p>Your conversations are saved</p>
+              <div className="stat-divider"></div>
+              <div className="stat-item">
+                <span className="stat-number">∞</span>
+                <span className="stat-label">Chat History</span>
               </div>
             </div>
 
-            <button className="cta-button" onClick={() => setPage("chat")}>
-              Start Chatting Now
-              <span className="button-arrow">→</span>
-            </button>
+            <div className="hero-actions">
+              <button
+                className="cta-button"
+                onClick={() => setPage("chat")}
+              >
+                Start Chatting Now
+                <span className="button-arrow">→</span>
+              </button>
+              <span className="cta-hint">No sign-up required</span>
+            </div>
           </div>
 
+          {/* ── Chat Preview ────────────────────────────────────────── */}
           <div className="hero-graphic">
             <div className="chat-preview">
-              <div className="chat-bubble user-bubble">
-                What is photosynthesis?
+              <div className="preview-header">
+                <div className="preview-dots">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+                <span className="preview-title">AI Assistant</span>
               </div>
-              <div className="chat-bubble ai-bubble">
-                I know this! Let me explain...
-              </div>
-              <div className="chat-bubble user-bubble">
-                Latest AI news 2026
-              </div>
-              <div className="chat-bubble ai-bubble">
-                Let me search the web for you...
+              <div className="preview-messages">
+                <div className="chat-bubble user-bubble">
+                  What is quantum computing?
+                </div>
+                <div className="chat-bubble ai-bubble">
+                  <div className="ai-bubble-badge">📚 Knowledge Base</div>
+                  Quantum computing uses <strong>qubits</strong> that can exist
+                  in multiple states simultaneously, enabling parallel
+                  processing at unprecedented speeds...
+                </div>
+                <div className="chat-bubble user-bubble">
+                  Latest AI news 2026
+                </div>
+                <div className="chat-bubble ai-bubble">
+                  <div className="ai-bubble-badge">🔍 Web Search</div>
+                  Searching the web for the latest info...
+                  <span className="typing-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </span>
+                </div>
               </div>
             </div>
+            {/* Glow behind preview */}
+            <div className="preview-glow"></div>
           </div>
         </main>
 
+        {/* ── Features Section ───────────────────────────────────────── */}
+        <section className="features-section">
+          <h2 className="section-title">
+            How It <span className="gradient-text">Works</span>
+          </h2>
+          <div className="features-grid">
+            <div className="feature-card">
+              <div className="feature-icon-bg knowledge">
+                <KnowledgeIcon />
+              </div>
+              <h3>Smart Knowledge Base</h3>
+              <p>
+                Answers from 50+ built-in topics instantly — no API calls, no
+                latency, no cost.
+              </p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon-bg speed">⚡</div>
+              <h3>Instant Responses</h3>
+              <p>
+                Knowledge base answers stream in real-time, word by word — just
+                like talking to a real AI.
+              </p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon-bg search">
+                <WebSearchIcon />
+              </div>
+              <h3>Web Fallback</h3>
+              <p>
+                When you need the latest info, DuckDuckGo search kicks in
+                automatically and synthesizes results.
+              </p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon-bg history">
+                <ChatIcon />
+              </div>
+              <h3>Persistent History</h3>
+              <p>
+                Every conversation is auto-saved. Browse, load, and delete past
+                chats from the sidebar.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Footer ─────────────────────────────────────────────────── */}
         <footer className="landing-footer">
-          <p>Created by Joshua Macapagal &amp; Ady</p>
+          <p>
+            Built with FastAPI + React · Created by{" "}
+            <strong>Joshua Macapagal &amp; Ady</strong>
+          </p>
         </footer>
       </div>
     );

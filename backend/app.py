@@ -10,6 +10,10 @@ import asyncio
 import uuid
 from pathlib import Path
 from pydantic import BaseModel
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI(
     title="AI Chat Assistant with Knowledge Base",
@@ -1268,9 +1272,25 @@ def search_web(query: str, max_results: int = 5) -> List[Dict]:
         print(f"❌ Search error: {e}")
         return []
 
-# Anthropic / Claude is not configured on this branch — fallback to snippet summary
-_HAS_ANTHROPIC = False
-_anthropic_client = None
+# Setup Anthropic client if key is provided in .env
+api_key = os.getenv("ANTHROPIC_API_KEY")
+if api_key and api_key != "your_api_key_here":
+    try:
+        import anthropic
+        _anthropic_client = anthropic.Anthropic(api_key=api_key)
+        _HAS_ANTHROPIC = True
+        print("✅ Anthropic API configured for web search synthesis")
+    except ImportError:
+        print("❌ anthropic package not found. Run: pip install anthropic")
+        _HAS_ANTHROPIC = False
+        _anthropic_client = None
+    except Exception as e:
+        print(f"❌ Failed to initialize Anthropic client: {e}")
+        _HAS_ANTHROPIC = False
+        _anthropic_client = None
+else:
+    _HAS_ANTHROPIC = False
+    _anthropic_client = None
 
 def format_answer_with_sources(query: str, results: List[Dict]) -> tuple:
     """Use web results to synthesize a formatted answer."""
