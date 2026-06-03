@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import axios, { AxiosError } from "axios";
+import React, { useState, useRef, useEffect } from "react";
 import "./App.css";
 
 interface Message {
@@ -24,84 +23,22 @@ interface Source {
   source: string;
 }
 
-type SearchMode = "search" | "ai";
-
-interface SearchHistoryItem {
-  id: string;
-  mode: SearchMode;
-  query: string;
-  searchedAt: number;
-}
-
-const HISTORY_STORAGE_KEY = "search-api-history";
-const MAX_HISTORY_ITEMS = 8;
-
-const getInitialHistory = (): SearchHistoryItem[] => {
-  const savedHistory = window.localStorage.getItem(HISTORY_STORAGE_KEY);
-
-  if (!savedHistory) {
-    return [];
-  }
-
-  try {
-    return JSON.parse(savedHistory) as SearchHistoryItem[];
-  } catch {
-    window.localStorage.removeItem(HISTORY_STORAGE_KEY);
-    return [];
-  }
-};
-
-function App() {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [answer, setAnswer] = useState("");
+export default function App() {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [resultCount, setResultCount] = useState(0);
-  const [submittedQuery, setSubmittedQuery] = useState("");
-  const [mode, setMode] = useState<SearchMode>("search");
-  const [history, setHistory] = useState<SearchHistoryItem[]>(getInitialHistory);
-
-  const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
-
-  useEffect(() => {
-    window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
-  }, [history]);
-
-  const getErrorMessage = (err: unknown) => {
-    if (axios.isAxiosError(err)) {
-      const axiosError = err as AxiosError<{ detail?: string }>;
-      return (
-        axiosError.response?.data?.detail ||
-        axiosError.message ||
-        "Connection error. Make sure the backend is running."
-      );
-    }
+  const [statusMessage, setStatusMessage] = useState(""); // NEW: Dynamic status
+  const [page, setPage] = useState<"landing" | "chat">("landing");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [currentSources, setCurrentSources] = useState<Source[]>([]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const addSearchHistory = (searchQuery: string, searchMode: SearchMode) => {
-    const id = `${searchMode}:${searchQuery.toLowerCase()}`;
-
-    setHistory((currentHistory) => {
-      const nextItem: SearchHistoryItem = {
-        id,
-        mode: searchMode,
-        query: searchQuery,
-        searchedAt: Date.now(),
-      };
-
-      return [
-        nextItem,
-        ...currentHistory.filter((item) => item.id !== id),
-      ].slice(0, MAX_HISTORY_ITEMS);
-    });
-  };
-
-  const runSearch = async (searchQuery: string, nextMode: SearchMode) => {
-    const trimmedQuery = searchQuery.trim();
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const handleSendMessage = async () => {
     if (!input.trim()) return;
@@ -113,55 +50,116 @@ function App() {
       timestamp: new Date(),
     };
 
-    setQuery(trimmedQuery);
-    setMode(nextMode);
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
     setLoading(true);
     setStatusMessage("");
 
     try {
-      const endpoint = nextMode === "ai" ? "/ai-search" : "/search";
-      const res = await axios.get(`${API_URL}${endpoint}`, {
-        params: { q: trimmedQuery },
-      });
+      const response = await fetch(
+        `http://127.0.0.1:8000/chat-stream?message=${encodeURIComponent(input)}`,
+      );
 
-      setAnswer(res.data.answer || "");
-      setResults(res.data.results || res.data.sources || []);
-      setResultCount(res.data.count || 0);
-      addSearchHistory(trimmedQuery, nextMode);
-    } catch (err: unknown) {
-      setError(getErrorMessage(err));
-      console.error(err);
+      if (!response.ok) throw new Error("Failed to fetch");
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let aiResponse = "";
+      let sources: Source[] = [];
+      let sourceType = ""; // NEW: Track source type
+
+      const aiMessageId = (Date.now() + 1).toString();
+      const aiMessage: Message = {
+        id: aiMessageId,
+        type: "ai",
+        content: "",
+        timestamp: new Date(),
+        isStreaming: true,
+      };
+
+      setMessages((prev) => [...prev, aiMessage]);
+
+      while (reader) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split("\n");
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = JSON.parse(line.slice(6));
+
+            if (data.type === "metadata") {
+              // NEW: Get source type from metadata
+              sourceType = data.source_type;
+              const statusText = data.source_type.includes("Web")
+                ? "🔍 Searching the web..."
+                : "📚 Using knowledge base...";
+              setStatusMessage(statusText);
+            } else if (data.type === "status") {
+              setStatusMessage(data.status);
+            } else if (data.type === "text") {
+              aiResponse += data.content;
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === aiMessageId
+                    ? { ...msg, content: aiResponse, isStreaming: !data.done }
+                    : msg,
+                ),
+              );
+              setStatusMessage("");
+            } else if (data.type === "sources") {
+              sources = data.sources;
+              setCurrentSources(sources);
+            } else if (data.type === "done") {
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === aiMessageId
+                    ? {
+                        ...msg,
+                        sources: sources.length > 0 ? sources : undefined,
+                        sourceType: data.source_type || sourceType, // NEW: Save source type
+                        isStreaming: false,
+                      }
+                    : msg,
+                ),
+              );
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      const errorMessage: Message = {
+        id: (Date.now() + 2).toString(),
+        type: "ai",
+        content: "❌ Error connecting to AI. Please try again.",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setLoading(false);
       setStatusMessage("");
     }
   };
 
-  const handleSearch = (nextMode: SearchMode = mode) => {
-    void runSearch(query, nextMode);
-  };
+  // Landing Page
+  if (page === "landing") {
+    return (
+      <div className="landing-container">
+        <div className="background-animation">
+          <div className="blob blob-1"></div>
+          <div className="blob blob-2"></div>
+          <div className="blob blob-3"></div>
+        </div>
 
-  const handleHistorySearch = (item: SearchHistoryItem) => {
-    void runSearch(item.query, item.mode);
-  };
-
-  const handleClear = () => {
-    setQuery("");
-    setResults([]);
-    setAnswer("");
-    setLoading(false);
-    setError("");
-    setResultCount(0);
-    setSubmittedQuery("");
-    setMode("search");
-  };
-
-  const handleClearHistory = () => {
-    setHistory([]);
-  };
-
-  const hasSearchState =
-    query || submittedQuery || results.length > 0 || answer || error;
+        <header className="landing-header">
+          <div className="logo">
+            <span className="logo-icon">🤖</span>
+            <span className="logo-text">AI Assistant</span>
+          </div>
+        </header>
 
         <main className="landing-main">
           <div className="hero-content">
@@ -170,70 +168,59 @@ function App() {
               <span className="gradient-text">Thinks Like Humans</span>
             </h1>
 
-      <div className="search-container">
-        <div className="search-box">
-          <input
-            type="text"
-            className="search-input"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            placeholder="Search the web..."
-          />
-          <button
-            className="action-button search-button"
-            onClick={() => handleSearch("search")}
-            disabled={loading}
-          >
-            <span className="button-icon search-icon" aria-hidden="true" />
-            <span>{loading ? "Searching" : "Search"}</span>
-          </button>
-          <button
-            className="action-button ai-button"
-            onClick={() => handleSearch("ai")}
-            disabled={loading}
-          >
-            <span className="button-icon ai-icon" aria-hidden="true" />
-            <span>Summary</span>
-          </button>
-          {hasSearchState && (
-            <button
-              className="action-button clear-button"
-              onClick={handleClear}
-              disabled={loading}
-            >
-              <span className="button-icon clear-icon" aria-hidden="true" />
-              <span>Clear</span>
-            </button>
-          )}
-        </div>
+            <p className="hero-subtitle">
+              I have my own knowledge base like Claude and Gemini. I answer from
+              what I know first, and only search the web when I need the latest
+              information. Fast, accurate, reliable.
+            </p>
 
-        {history.length > 0 && (
-          <section className="history-panel" aria-label="Search history">
-            <div className="history-header">
-              <h2>Recent Searches</h2>
-              <button onClick={handleClearHistory} disabled={loading}>
-                Clear history
-              </button>
+            <div className="features-grid">
+              <div className="feature-card">
+                <div className="feature-icon">🧠</div>
+                <h3>Smart Knowledge Base</h3>
+                <p>50+ topics of built-in expertise</p>
+              </div>
+
+              <div className="feature-card">
+                <div className="feature-icon">⚡</div>
+                <h3>Instant Answers</h3>
+                <p>Responds from memory first</p>
+              </div>
+
+              <div className="feature-card">
+                <div className="feature-icon">🌐</div>
+                <h3>Web When Needed</h3>
+                <p>Searches only for latest info</p>
+              </div>
+
+              <div className="feature-card">
+                <div className="feature-icon">📚</div>
+                <h3>Source Attribution</h3>
+                <p>Always shows where info comes from</p>
+              </div>
             </div>
-            <div className="history-list">
-              {history.map((item) => (
-                <button
-                  key={item.id}
-                  className="history-item"
-                  onClick={() => handleHistorySearch(item)}
-                  disabled={loading}
-                >
-                  <span className="history-query">{item.query}</span>
-                  <span className="history-mode">
-                    {item.mode === "ai" ? "Summary" : "Search"}
-                  </span>
-                </button>
-              ))}
+
+            <button className="cta-button" onClick={() => setPage("chat")}>
+              Start Chatting Now
+              <span className="button-arrow">→</span>
+            </button>
+          </div>
+
+          <div className="hero-graphic">
+            <div className="chat-preview">
+              <div className="chat-bubble user-bubble">
+                What is photosynthesis?
+              </div>
+              <div className="chat-bubble ai-bubble">
+                📚 I know this! Let me explain...
+              </div>
+              <div className="chat-bubble user-bubble">Latest AI news 2026</div>
+              <div className="chat-bubble ai-bubble">
+                🔍 Let me search the web for you...
+              </div>
             </div>
-          </section>
-        )}
-      </div>
+          </div>
+        </main>
 
         <footer className="landing-footer">
           <p>Created by Joshua Macapagal & Ady</p>
