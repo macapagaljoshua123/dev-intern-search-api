@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from typing import List, Dict, AsyncGenerator, Optional, Tuple
@@ -7,6 +7,9 @@ from ddgs import DDGS
 import re
 import json
 import asyncio
+import uuid
+from pathlib import Path
+from pydantic import BaseModel
 
 app = FastAPI(
     title="AI Chat Assistant with Knowledge Base",
@@ -20,6 +23,29 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ============================================================
+# HISTORY STORAGE
+# ============================================================
+HISTORY_DIR = Path(__file__).parent / "chat_history"
+HISTORY_DIR.mkdir(exist_ok=True)
+
+
+class MessageModel(BaseModel):
+    id: str
+    type: str
+    content: str
+    sources: Optional[List[Dict]] = None
+    sourceType: Optional[str] = None
+    timestamp: str
+
+
+class ConversationModel(BaseModel):
+    id: Optional[str] = None
+    title: str
+    messages: List[MessageModel]
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
 
 # ============================================================
 # PART 1: COMPREHENSIVE AI KNOWLEDGE BASE
@@ -1451,6 +1477,79 @@ async def chat_stream(message: str = Query(..., min_length=1, description="Your 
     
     return StreamingResponse(generate(), media_type="text/event-stream")
 
+# ============================================================
+# PART 6: CHAT HISTORY ENDPOINTS
+# ============================================================
+
+
+@app.get("/history")
+def list_history():
+    """List all saved conversations"""
+    conversations = []
+    for file_path in sorted(
+        HISTORY_DIR.glob("*.json"),
+        key=lambda f: f.stat().st_mtime,
+        reverse=True,
+    ):
+        try:
+            data = json.loads(file_path.read_text(encoding="utf-8"))
+            conversations.append(
+                {
+                    "id": data.get("id", file_path.stem),
+                    "title": data.get("title", "Untitled"),
+                    "message_count": len(data.get("messages", [])),
+                    "created_at": data.get("created_at"),
+                    "updated_at": data.get("updated_at"),
+                }
+            )
+        except Exception:
+            continue
+    return {"conversations": conversations}
+
+
+@app.get("/history/{conversation_id}")
+def get_history(conversation_id: str):
+    """Get a specific conversation by ID"""
+    file_path = HISTORY_DIR / f"{conversation_id}.json"
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    data = json.loads(file_path.read_text(encoding="utf-8"))
+    return data
+
+
+@app.post("/history")
+def save_history(conversation: ConversationModel):
+    """Save or update a conversation"""
+    conv_id = conversation.id or str(uuid.uuid4())
+    now = datetime.now().isoformat()
+
+    data = {
+        "id": conv_id,
+        "title": conversation.title,
+        "messages": [m.model_dump() for m in conversation.messages],
+        "created_at": conversation.created_at or now,
+        "updated_at": now,
+    }
+
+    file_path = HISTORY_DIR / f"{conv_id}.json"
+    file_path.write_text(
+        json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+
+    return {"id": conv_id, "status": "saved"}
+
+
+@app.delete("/history/{conversation_id}")
+def delete_history(conversation_id: str):
+    """Delete a conversation"""
+    file_path = HISTORY_DIR / f"{conversation_id}.json"
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    file_path.unlink()
+    return {"status": "deleted"}
+
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)

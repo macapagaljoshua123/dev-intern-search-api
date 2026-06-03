@@ -1,0 +1,12 @@
+[
+  {
+    "role": "user",
+    "content": "How does machine learning work?",
+    "timestamp": "2026-06-03T14:45:35.865172"
+  },
+  {
+    "role": "ai",
+    "content": "# \ud83e\udde0 Machine Learning\n\nMachine learning is a subset of AI where systems learn patterns from data without being explicitly programmed for every scenario.\n\n## Three Main Types\n\n### 1. Supervised Learning\n**Learning from labeled examples**\n- You provide input AND correct output\n- System learns the mapping between them\n- Used for: prediction, classification\n\n**Examples:**\n- Email spam detection (labeled as spam/not spam)\n- Image recognition (labeled as \"dog\", \"cat\", etc.)\n- Price prediction (given features, predict price)\n\n**Algorithms:** Linear Regression, Decision Trees, SVM, Neural Networks\n\n### 2. Unsupervised Learning\n**Learning patterns without labels**\n- You provide input data only\n- System finds hidden patterns\n- Used for: clustering, dimensionality reduction\n\n**Examples:**\n- Customer segmentation (group similar customers)\n- Anomaly detection (find unusual patterns)\n- Recommendation systems (group similar items)\n\n**Algorithms:** K-Means, Hierarchical Clustering, PCA\n\n### 3. Reinforcement Learning\n**Learning through rewards and penalties**\n- Agent takes actions in environment\n- Gets rewards for good actions\n- Learns to maximize rewards\n\n**Examples:**\n- Game AI (AlphaGo, chess bots)\n- Robotics (learning to walk)\n- Autonomous vehicles\n\n**Key Concept:** Exploration vs Exploitation\n\n## The Machine Learning Workflow\n\n```\n1. Define Problem\n   \u2193\n2. Collect Data\n   \u2193\n3. Preprocess Data (clean, normalize)\n   \u2193\n4. Feature Engineering (select important features)\n   \u2193\n5. Choose Algorithm\n   \u2193\n6. Train Model\n   \u2193\n7. Evaluate Performance\n   \u2193\n8. Hyperparameter Tuning\n   \u2193\n9. Deploy Model\n   \u2193\n10. Monitor & Maintain\n```\n\n## Key Concepts\n\n**Training Set vs Test Set:**\n- Training: Data model learns from (80%)\n- Testing: Data to evaluate performance (20%)\n- If training accuracy > test accuracy = overfitting\n\n**Overfitting:** Model memorizes training data but fails on new data\n\n**Underfitting:** Model is too simple to capture patterns\n\n**Regularization:** Technique to prevent overfitting",
+    "timestamp": "2026-06-03T14:45:35.877511"
+  }
+]
