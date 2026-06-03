@@ -1268,8 +1268,12 @@ def search_web(query: str, max_results: int = 5) -> List[Dict]:
         print(f"❌ Search error: {e}")
         return []
 
+# Anthropic / Claude is not configured on this branch — fallback to snippet summary
+_HAS_ANTHROPIC = False
+_anthropic_client = None
+
 def format_answer_with_sources(query: str, results: List[Dict]) -> tuple:
-    """Use Claude to synthesize a complete, well-formatted answer from web results."""
+    """Use web results to synthesize a formatted answer."""
     if not results:
         return f"I searched the web for '{summarize_question(query)}' but couldn't find relevant information. Try rephrasing your question.", []
 
