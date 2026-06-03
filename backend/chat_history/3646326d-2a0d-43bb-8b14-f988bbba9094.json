@@ -1,0 +1,24 @@
+{
+  "id": "3646326d-2a0d-43bb-8b14-f988bbba9094",
+  "title": "What is photosynthesis?What is photosynthesis?",
+  "messages": [
+    {
+      "id": "ac6db5cb-4821-49da-9dbf-745393e5f2cb",
+      "type": "user",
+      "content": "What is photosynthesis?What is photosynthesis?",
+      "sources": null,
+      "sourceType": null,
+      "timestamp": "2026-06-03T10:01:23.410Z"
+    },
+    {
+      "id": "03741df9-5239-4aeb-9edb-7900313c8722",
+      "type": "ai",
+      "content": "# 🌱 Photosynthesis\n\nPhotosynthesis is the process by which plants convert sunlight into chemical energy (glucose) that they can use for growth and metabolism.\n\n## The Process\n\n**Light-Dependent Reactions (in the thylakoid membrane):**\n- Chlorophyll absorbs light energy\n- Water molecules are split (H₂O → H⁺ + O₂)\n- Energy is stored in ATP and NADPH\n- Oxygen is released as a byproduct\n\n**Light-Independent Reactions/Calvin Cycle (in the stroma):**\n- Uses ATP and NADPH from light reactions\n- Fixes CO₂ into glucose (C₆H₁₂O₆)\n- Occurs even without light (but needs products from light reactions)\n\n## The Equation\n\n```\n6CO₂ + 6H₂O + light energy → C₆H₁₂O₆ + 6O₂\n```\n\n## Key Points\n\n- Takes place in chloroplasts\n- Main pigment is chlorophyll (absorbs red and blue light, reflects green)\n- Rate depends on: light intensity, CO₂ concentration, temperature\n- Produces oxygen as waste (great for us!)\n- Occurs in all green plants, algae, and some bacteria\n\n## Why It Matters\n\nPhotosynthesis is the foundation of almost all life on Earth. It converts light energy into chemical energy that flows through food chains. Without it, there would be no oxygen and no food! ",
+      "sources": null,
+      "sourceType": "Knowledge Base",
+      "timestamp": "2026-06-03T10:01:24.374Z"
+    }
+  ],
+  "created_at": "2026-06-03T18:01:27.466563",
+  "updated_at": "2026-06-03T18:01:27.466563"
+}
