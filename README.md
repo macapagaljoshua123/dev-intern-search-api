@@ -1,6 +1,6 @@
 #  dev-intern-search-api
 
-A lightweight web search app with a **TypeScript + React** frontend and a **Python FastAPI** backend using DuckDuckGo — no API key required.
+AI-powered web search app with a **TypeScript + React** frontend and a **Python FastAPI** backend using **Google Gemini AI** and **DuckDuckGo** — no API key required for search (but AI needs Gemini API key).
 
 ---
 
@@ -17,6 +17,17 @@ dev-intern-search-api/
 │   └── vite.config.ts
 └── README.md
 ```
+
+##  Features
+
+-  **AI Chat Assistant** powered by Google Gemini AI
+-  **Web Search** using DuckDuckGo (no API key needed)
+-  **Website Scraping** for accurate, up-to-date information
+-  **Sources included** with every answer
+-  **Beautiful formatted responses** (headings, bullet points, bold text)
+-  **FastAPI** backend with automatic API docs
+-  **React + TypeScript** frontend with Vite
+
 
 ---
 
