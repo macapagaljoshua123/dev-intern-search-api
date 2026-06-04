@@ -55,21 +55,29 @@ else:
         print("⚠️ No working model found. Please check your API key and internet connection.")
 
 # ============ WEB SEARCH ============
+from search_providers import SearchManager
+
 def search_web(query: str, max_results: int = 5):
+    import asyncio
+    manager = SearchManager()
+    
+    # Run the async method in a synchronous wrapper since search_web is used synchronously
     try:
-        with DDGS() as ddgs:
-            results = list(ddgs.text(query, max_results=max_results))
-            return [
-                {
-                    "title": r.get("title", ""),
-                    "url": r.get("href", ""),
-                    "snippet": r.get("body", "")
-                }
-                for r in results
-            ]
-    except Exception as e:
-        print(f"Search error: {e}")
-        return []
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+    if loop.is_running():
+        # If we are already in an async context, this shouldn't be called directly, 
+        # but chat() runs in FastAPI which uses threadpool for sync functions.
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            search_response = pool.submit(lambda: asyncio.run(manager.search(query, max_results=max_results))).result()
+    else:
+        search_response = loop.run_until_complete(manager.search(query, max_results=max_results))
+        
+    return search_response.get("results", [])
 
 # ============ SCRAPE ============
 async def scrape_url(url: str) -> str:
@@ -181,4 +189,4 @@ async def root():
             "POST /chat": "Send a message to AI (searches web + provides answers)",
             "GET /health": "Check API status"
         }
-    }
+    }
