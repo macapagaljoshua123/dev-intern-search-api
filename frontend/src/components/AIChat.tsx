@@ -110,10 +110,14 @@ const AIChat: React.FC = () => {
     const renderAnswer = (message: Message) => {
         if (!message.answer) return <p>{message.text}</p>;
         
+        // Preprocess to replace literal bullet points with markdown list markers
+        // This ensures old chat history also renders correctly
+        const processedAnswer = message.answer.replace(/• /g, '\n- ');
+        
         return (
             <div className="markdown-body">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {message.answer}
+                    {processedAnswer}
                 </ReactMarkdown>
             </div>
         );

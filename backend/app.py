@@ -147,7 +147,7 @@ async def chat(request: dict):
 
 Instructions:
 - Use your knowledge AND the web search results above
-- Format with ## headings, • bullet points, **bold**
+- Format with ## headings, markdown lists (-), **bold**
 - At the end, list Sources with URLs
 - No emojis
 
