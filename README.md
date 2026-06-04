@@ -175,3 +175,16 @@ npm run dev -- --port 3000
 
 ---
 
+---
+Backend Dependencies (backend/requirements.txt)
+
+| Package | Version | Purpose |
+|--------|----------|-------------|
+| `fastapi` | `	0.115.0` | Web framework for API |
+| `uvicorn` | `	0.30.0` | ASGI server |
+| `ddgs` | `	9.0.0` | 	DuckDuckGo search API |
+| `python-dotenv` | `1.0.0` | Environment variable management |
+| `google-generativeai` | `0.8.0` | 	Google Gemini AI integration |
+| `httpx` | `0.27.0` | 	Async HTTP client for web scraping |
+|--------|----------|-------------|
+---
