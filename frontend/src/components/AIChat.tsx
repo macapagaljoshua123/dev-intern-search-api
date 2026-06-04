@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
+import './AIChat.css';
 
 interface Message {
     id: string;
@@ -10,14 +11,7 @@ interface Message {
 }
 
 const AIChat: React.FC = () => {
-    const [messages, setMessages] = useState<Message[]>([
-        {
-            id: '1',
-            text: 'Welcome! I can search the web and give you accurate answers with sources. Ask me anything!',
-            isUser: false,
-            answer: '## Welcome! 👋\n\nI am an AI assistant that can search the web to give you accurate, up-to-date answers.\n\n### What I can do:\n• Answer questions from my knowledge base\n• Search the web for current information\n• Scrape and read websites for detailed answers\n• Provide sources for all information\n\n**Try asking me:**\n• "What is photosynthesis?"\n• "Tell me about the latest AI news"\n• "Explain quantum computing"'
-        }
-    ]);
+    const [messages, setMessages] = useState<Message[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -30,12 +24,13 @@ const AIChat: React.FC = () => {
         scrollToBottom();
     }, [messages]);
 
-    const sendMessage = async () => {
-        if (!inputValue.trim() || isLoading) return;
+    const sendMessage = async (overrideText?: string) => {
+        const textToSend = overrideText || inputValue;
+        if (!textToSend.trim() || isLoading) return;
 
         const userMessage: Message = {
             id: Date.now().toString(),
-            text: inputValue,
+            text: textToSend,
             isUser: true,
         };
         setMessages(prev => [...prev, userMessage]);
@@ -44,12 +39,12 @@ const AIChat: React.FC = () => {
 
         try {
             const response = await axios.post('http://127.0.0.1:8000/chat', {
-                message: inputValue
+                message: textToSend
             });
 
             const aiMessage: Message = {
                 id: (Date.now() + 1).toString(),
-                text: inputValue,
+                text: textToSend,
                 isUser: false,
                 answer: response.data.answer,
                 sources: response.data.sources,
@@ -72,7 +67,6 @@ const AIChat: React.FC = () => {
     const renderAnswer = (message: Message) => {
         if (!message.answer) return <p>{message.text}</p>;
         
-        // Convert markdown-like formatting to HTML
         let html = message.answer
             .replace(/## (.*?)(?:\n|$)/g, '<h2>$1</h2>')
             .replace(/### (.*?)(?:\n|$)/g, '<h3>$1</h3>')
@@ -85,179 +79,119 @@ const AIChat: React.FC = () => {
     };
 
     return (
-        <div style={styles.container}>
-            <div style={styles.header}>
-                <h1>🤖 AI Chat Assistant</h1>
-                <p>Powered by Gemini AI + Web Search</p>
-            </div>
+        <div className="app-container">
+            <aside className="sidebar">
+                <div className="sidebar-header">
+                    <div className="logo-area">
+                        <div className="logo-icon">🤖</div>
+                        <span className="logo-text">AI Assistant</span>
+                        <span className="badge">Web Search</span>
+                    </div>
+                    <button className="new-chat-btn" onClick={() => setMessages([])}>
+                        + New Chat
+                    </button>
+                </div>
+                <div className="sidebar-history">
+                    <div className="history-section">TODAY</div>
+                    <div className="history-item">What's the latest AI news tod...</div>
+                    <div className="history-item">What's the latest AI news today? H...</div>
+                </div>
+            </aside>
 
-            <div style={styles.messagesArea}>
-                {messages.map((msg) => (
-                    <div key={msg.id} style={{
-                        ...styles.message,
-                        ...(msg.isUser ? styles.userMessage : styles.aiMessage)
-                    }}>
-                        <div style={styles.messageHeader}>
-                            {msg.isUser ? 'You' : 'AI Assistant'}
+            <main className="main-content">
+                {messages.length === 0 ? (
+                    <div className="empty-state">
+                        <div className="main-logo">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 2v4m0 12v4M4 12H2m20 0h-2m-2.8-7.2l-2.8 2.8M7.6 16.4l-2.8 2.8m11.6 0l-2.8-2.8M7.6 7.6L4.8 4.8" />
+                                <circle cx="12" cy="12" r="3" fill="white" />
+                            </svg>
                         </div>
-                        <div style={styles.messageContent}>
-                            {msg.isUser ? msg.text : renderAnswer(msg)}
+                        <h1>What can I help you with?</h1>
+                        <p className="subtitle">Ask anything — I'll search the web and give you accurate answers.</p>
+                        
+                        <div className="suggestions-grid">
+                            <button className="suggestion-btn" onClick={() => sendMessage("Latest AI news")}>
+                                <span className="icon">🌐</span> Latest AI news
+                            </button>
+                            <button className="suggestion-btn" onClick={() => sendMessage("Explain React")}>
+                                <span className="icon">⚛️</span> Explain React
+                            </button>
+                            <button className="suggestion-btn" onClick={() => sendMessage("Python basics")}>
+                                <span className="icon">🐍</span> Python basics
+                            </button>
+                            <button className="suggestion-btn" onClick={() => sendMessage("Market trends")}>
+                                <span className="icon">📈</span> Market trends
+                            </button>
                         </div>
-                        {msg.sources && msg.sources.length > 0 && !msg.isUser && (
-                            <div style={styles.sources}>
-                                <strong>📚 Sources:</strong>
-                                {msg.sources.map((src, idx) => (
-                                    <a key={idx} href={src.url} target="_blank" rel="noopener noreferrer" style={styles.sourceLink}>
-                                        {src.title || src.url}
-                                    </a>
-                                ))}
+                    </div>
+                ) : (
+                    <div className="messages-area">
+                        {messages.map((msg) => (
+                            <div key={msg.id} className={`message ${msg.isUser ? 'user' : 'ai'}`}>
+                                <div className="message-content">
+                                    {msg.isUser ? msg.text : renderAnswer(msg)}
+                                </div>
+                                {msg.sources && msg.sources.length > 0 && !msg.isUser && (
+                                    <div className="sources">
+                                        <strong>📚 Sources:</strong>
+                                        {msg.sources.map((src, idx) => (
+                                            <a key={idx} href={src.url} target="_blank" rel="noopener noreferrer" className="source-link">
+                                                {src.title || src.url}
+                                            </a>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                        {isLoading && (
+                            <div className="message ai">
+                                <div className="message-content">Searching the web and thinking...</div>
                             </div>
                         )}
-                    </div>
-                ))}
-                
-                {isLoading && (
-                    <div style={styles.loading}>
-                        <div style={styles.spinner}></div>
-                        <span>Searching the web and thinking...</span>
+                        <div ref={messagesEndRef} />
                     </div>
                 )}
-                <div ref={messagesEndRef} />
-            </div>
 
-            <div style={styles.inputArea}>
-                <input
-                    type="text"
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                    placeholder="Ask me anything... I'll search the web for accurate answers!"
-                    style={styles.input}
-                    disabled={isLoading}
-                />
-                <button onClick={sendMessage} disabled={isLoading} style={styles.button}>
-                    Send
-                </button>
-            </div>
+                <div className="input-container-wrapper">
+                    <div className="input-box">
+                        <input 
+                            type="text" 
+                            placeholder="Ask me anything..." 
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            onKeyPress={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    sendMessage();
+                                }
+                            }}
+                            disabled={isLoading}
+                        />
+                        <div className="input-actions">
+                            <div className="left-actions">
+                                <button className="action-btn" onClick={() => sendMessage()}>
+                                    <span className="icon">🌐</span> Search
+                                </button>
+                                <button className="action-btn">
+                                    <span className="icon">📎</span> Attach
+                                </button>
+                            </div>
+                            <div className="right-actions">
+                                <button className="icon-btn">🎤</button>
+                                <button className="icon-btn send" onClick={() => sendMessage()} disabled={isLoading || !inputValue.trim()}>
+                                    ↑
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="input-footer">
+                        Press <kbd>Enter</kbd> to send - <kbd>Shift</kbd>+<kbd>Enter</kbd> for new line
+                    </div>
+                </div>
+            </main>
         </div>
     );
 };
-
-const styles: { [key: string]: React.CSSProperties } = {
-    container: {
-        maxWidth: '900px',
-        margin: '0 auto',
-        padding: '20px',
-        height: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        backgroundColor: '#f5f5f5',
-    },
-    header: {
-        textAlign: 'center',
-        marginBottom: '20px',
-        padding: '10px',
-        backgroundColor: '#4a90e2',
-        color: 'white',
-        borderRadius: '10px',
-    },
-    messagesArea: {
-        flex: 1,
-        overflowY: 'auto',
-        padding: '20px',
-        backgroundColor: 'white',
-        borderRadius: '10px',
-        marginBottom: '20px',
-    },
-    message: {
-        marginBottom: '16px',
-        padding: '12px 16px',
-        borderRadius: '12px',
-        maxWidth: '80%',
-    },
-    userMessage: {
-        backgroundColor: '#4a90e2',
-        color: 'white',
-        marginLeft: 'auto',
-    },
-    aiMessage: {
-        backgroundColor: '#e9ecef',
-        color: '#333',
-        marginRight: 'auto',
-    },
-    messageHeader: {
-        fontSize: '12px',
-        fontWeight: 'bold',
-        marginBottom: '8px',
-    },
-    messageContent: {
-        fontSize: '14px',
-        lineHeight: '1.5',
-    },
-    sources: {
-        marginTop: '12px',
-        paddingTop: '8px',
-        borderTop: '1px solid #ddd',
-        fontSize: '12px',
-    },
-    sourceLink: {
-        display: 'block',
-        color: '#0066cc',
-        textDecoration: 'none',
-        marginTop: '4px',
-        fontSize: '11px',
-        wordBreak: 'break-all',
-    },
-    inputArea: {
-        display: 'flex',
-        gap: '12px',
-        padding: '16px',
-        backgroundColor: 'white',
-        borderRadius: '10px',
-    },
-    input: {
-        flex: 1,
-        padding: '12px',
-        border: '1px solid #ddd',
-        borderRadius: '24px',
-        fontSize: '14px',
-        outline: 'none',
-    },
-    button: {
-        padding: '12px 24px',
-        backgroundColor: '#4a90e2',
-        color: 'white',
-        border: 'none',
-        borderRadius: '24px',
-        cursor: 'pointer',
-        fontSize: '14px',
-    },
-    loading: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
-        padding: '16px',
-        backgroundColor: '#e9ecef',
-        borderRadius: '12px',
-        marginBottom: '16px',
-    },
-    spinner: {
-        width: '20px',
-        height: '20px',
-        border: '2px solid #ddd',
-        borderTop: '2px solid #4a90e2',
-        borderRadius: '50%',
-        animation: 'spin 1s linear infinite',
-    },
-};
-
-// Add keyframes for spinner (inject into document)
-const styleSheet = document.createElement("style");
-styleSheet.textContent = `
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-`;
-document.head.appendChild(styleSheet);
 
 export default AIChat;
