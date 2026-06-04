@@ -1,4 +1,6 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import "./App.css";
 
 interface Message {
@@ -11,7 +13,8 @@ interface Message {
     snippet: string;
     source: string;
   }>;
-  sourceType?: string; // NEW: Track where answer came from
+  sourceType?: string;
+  suggestions?: string[];
   timestamp: Date;
   isStreaming?: boolean;
 }
@@ -27,7 +30,7 @@ export default function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [statusMessage, setStatusMessage] = useState(""); // NEW: Dynamic status
+  const [statusMessage, setStatusMessage] = useState("");
   const [page, setPage] = useState<"landing" | "chat">("landing");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [currentSources, setCurrentSources] = useState<Source[]>([]);
@@ -40,13 +43,22 @@ export default function App() {
     scrollToBottom();
   }, [messages]);
 
-  const handleSendMessage = async () => {
-    if (!input.trim()) return;
+  const handleSuggestionClick = (suggestion: string) => {
+    setInput(suggestion);
+    // Auto-send the suggestion
+    setTimeout(() => {
+      const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+      handleSendMessageWithText(suggestion);
+    }, 100);
+  };
+
+  const handleSendMessageWithText = async (text: string) => {
+    if (!text.trim()) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       type: "user",
-      content: input,
+      content: text,
       timestamp: new Date(),
     };
 
@@ -57,7 +69,7 @@ export default function App() {
 
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/chat-stream?message=${encodeURIComponent(input)}`,
+        `http://127.0.0.1:8000/chat-stream?message=${encodeURIComponent(text)}`,
       );
 
       if (!response.ok) throw new Error("Failed to fetch");
@@ -66,7 +78,8 @@ export default function App() {
       const decoder = new TextDecoder();
       let aiResponse = "";
       let sources: Source[] = [];
-      let sourceType = ""; // NEW: Track source type
+      let sourceType = "";
+      let suggestions: string[] = [];
 
       const aiMessageId = (Date.now() + 1).toString();
       const aiMessage: Message = {
@@ -88,43 +101,50 @@ export default function App() {
 
         for (const line of lines) {
           if (line.startsWith("data: ")) {
-            const data = JSON.parse(line.slice(6));
+            try {
+              const data = JSON.parse(line.slice(6));
 
-            if (data.type === "metadata") {
-              // NEW: Get source type from metadata
-              sourceType = data.source_type;
-              const statusText = data.source_type.includes("Web")
-                ? "🔍 Searching the web..."
-                : "📚 Using knowledge base...";
-              setStatusMessage(statusText);
-            } else if (data.type === "status") {
-              setStatusMessage(data.status);
-            } else if (data.type === "text") {
-              aiResponse += data.content;
-              setMessages((prev) =>
-                prev.map((msg) =>
-                  msg.id === aiMessageId
-                    ? { ...msg, content: aiResponse, isStreaming: !data.done }
-                    : msg,
-                ),
-              );
-              setStatusMessage("");
-            } else if (data.type === "sources") {
-              sources = data.sources;
-              setCurrentSources(sources);
-            } else if (data.type === "done") {
-              setMessages((prev) =>
-                prev.map((msg) =>
-                  msg.id === aiMessageId
-                    ? {
-                        ...msg,
-                        sources: sources.length > 0 ? sources : undefined,
-                        sourceType: data.source_type || sourceType, // NEW: Save source type
-                        isStreaming: false,
-                      }
-                    : msg,
-                ),
-              );
+              if (data.type === "metadata") {
+                sourceType = data.source_type;
+                const statusText = data.source_type.includes("Web")
+                  ? "🔍 Searching the web..."
+                  : "📚 Using knowledge base...";
+                setStatusMessage(statusText);
+              } else if (data.type === "status") {
+                setStatusMessage(data.status);
+              } else if (data.type === "text") {
+                aiResponse += data.content;
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === aiMessageId
+                      ? { ...msg, content: aiResponse, isStreaming: !data.done }
+                      : msg,
+                  ),
+                );
+                setStatusMessage("");
+              } else if (data.type === "sources") {
+                sources = data.sources;
+                setCurrentSources(sources);
+              } else if (data.type === "suggestions") {
+                suggestions = data.suggestions;
+              } else if (data.type === "done") {
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === aiMessageId
+                      ? {
+                          ...msg,
+                          sources: sources.length > 0 ? sources : undefined,
+                          sourceType: data.source_type || sourceType,
+                          suggestions:
+                            suggestions.length > 0 ? suggestions : undefined,
+                          isStreaming: false,
+                        }
+                      : msg,
+                  ),
+                );
+              }
+            } catch {
+              // Skip malformed JSON chunks
             }
           }
         }
@@ -142,6 +162,10 @@ export default function App() {
       setLoading(false);
       setStatusMessage("");
     }
+  };
+
+  const handleSendMessage = async () => {
+    await handleSendMessageWithText(input);
   };
 
   // Landing Page
@@ -223,7 +247,7 @@ export default function App() {
         </main>
 
         <footer className="landing-footer">
-          <p>Created by Joshua Macapagal & Ady</p>
+          <p>Created by Joshua Macapagal &amp; Ady</p>
         </footer>
       </div>
     );
@@ -277,7 +301,7 @@ export default function App() {
             className={`message-wrapper ${message.type === "user" ? "user" : "ai"}`}
           >
             <div className={`message-bubble ${message.type}`}>
-              {/* NEW: Source type badge */}
+              {/* Source type badge */}
               {message.type === "ai" && message.sourceType && (
                 <div
                   className={`source-badge ${
@@ -298,13 +322,18 @@ export default function App() {
                 )}
                 {message.content && (
                   <div className="message-text">
-                    {message.content.split("\n").map((line, idx) => (
-                      <p key={idx}>{line}</p>
-                    ))}
+                    {message.type === "ai" ? (
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {message.content}
+                      </ReactMarkdown>
+                    ) : (
+                      message.content
+                    )}
                   </div>
                 )}
               </div>
 
+              {/* Sources */}
               {message.sources && message.sources.length > 0 && (
                 <div className="message-sources">
                   <div className="sources-title">📚 Sources:</div>
@@ -324,6 +353,31 @@ export default function App() {
                   ))}
                 </div>
               )}
+
+              {/* Follow-up Suggestions */}
+              {message.type === "ai" &&
+                !message.isStreaming &&
+                message.suggestions &&
+                message.suggestions.length > 0 && (
+                  <div className="follow-up-suggestions">
+                    <p className="suggestions-prompt">
+                      What would you like to explore next?
+                    </p>
+                    <div className="suggestion-buttons">
+                      {message.suggestions.map((suggestion, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => handleSuggestionClick(suggestion)}
+                          disabled={loading}
+                          className="suggestion-chip"
+                        >
+                          <span className="chip-icon">→</span>
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
             </div>
           </div>
         ))}

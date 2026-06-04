@@ -7,6 +7,24 @@ from ddgs import DDGS
 import re
 import json
 import asyncio
+import os
+from dotenv import load_dotenv
+import google.generativeai as genai
+
+load_dotenv()
+
+# Initialize Gemini
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+    
+GEMINI_SYSTEM_PROMPT = """You are Gemini, a highly accurate, smart, and helpful AI assistant. You are provided with a "Knowledge Base Context" to help answer the user's question, but you must use it critically.
+
+STRICT RULES FOR ANSWERING:
+1. RELEVANCE CHECK: Before answering, look at the user's question and the provided context. If the user asks about one topic (e.g., "What is HTML?") but the provided context is about a completely different topic (e.g., "Machine Learning"), you MUST IGNORE the context entirely.
+2. GENERAL KNOWLEDGE FALLBACK: If the context is irrelevant or mismatched, do not use it. Instead, answer the user's question accurately using your own internal general knowledge.
+3. DIRECT ANSWER: Always answer the user's exact question. Never change the topic or talk about what is in the context if it doesn't match the prompt.
+4. FORMATTING: Use clean Markdown. Use bold text for emphasis, bullet points for lists, and clear headers to make the answer highly readable."""
 
 app = FastAPI(
     title="AI Chat Assistant with Knowledge Base",
@@ -30,28 +48,52 @@ AI_KNOWLEDGE = {
         "patterns": ["^hi$", "^hello$", "^hey$", "^good morning$", "^good afternoon$", "^good evening$", "^howdy$", "^sup$"],
         "answer": "Hello! 👋 I'm your AI assistant. I have extensive knowledge about many topics. What can I help you with?",
         "confidence": 0.99,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "Tell me about Albert Einstein",
+            "What is artificial intelligence?",
+            "Explain photosynthesis",
+            "How does machine learning work?"
+        ]
     },
     
     "how_are_you": {
         "patterns": ["^how are you$", "^how are you doing$", "^how's it going$", "how are you", "how's it going"],
         "answer": "I'm doing great! 😊 Thanks for asking. I'm here to help you with anything you need. What would you like to know?",
         "confidence": 0.99,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "What topics can you help with?",
+            "Tell me about climate change",
+            "Explain cryptocurrency",
+            "What is stoicism?"
+        ]
     },
     
     "what_is_your_name": {
         "patterns": ["what is your name", "your name", "who are you", "what are you called"],
         "answer": "I'm your AI Chat Assistant! I was created by Joshua Macapagal and Ady. I have a comprehensive knowledge base and can search the web for the latest information when needed.",
         "confidence": 0.98,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "Who created you?",
+            "What topics do you know about?",
+            "What is artificial intelligence?",
+            "How does your web search work?"
+        ]
     },
     
     "who_created_you": {
         "patterns": ["who created you", "who made you", "your creator", "who built you", "who developed you"],
         "answer": "I was created by **Joshua Macapagal** and **Ady** as an AI assistant with both a comprehensive knowledge base and real-time web search capabilities.",
         "confidence": 0.98,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "What can you do?",
+            "What topics do you know about?",
+            "Tell me about artificial intelligence",
+            "How does your knowledge base work?"
+        ]
     },
 
     # ============================================================
@@ -95,7 +137,13 @@ Photosynthesis is the process by which plants convert sunlight into chemical ene
 
 Photosynthesis is the foundation of almost all life on Earth. It converts light energy into chemical energy that flows through food chains. Without it, there would be no oxygen and no food!""",
         "confidence": 0.95,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "What is the Calvin Cycle in detail?",
+            "How do plants absorb sunlight?",
+            "What is cellular respiration?",
+            "Why are leaves green?"
+        ]
     },
 
     "black_holes": {
@@ -140,7 +188,13 @@ Black holes form when massive stars (20+ solar masses) reach the end of their li
 
 Sagittarius A* is a supermassive black hole at the center of the Milky Way, about 4 million solar masses. In 2020, we got the first image of it!""",
         "confidence": 0.94,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "What is Hawking radiation?",
+            "How was the first black hole image taken?",
+            "What happens if you fall into a black hole?",
+            "Tell me about neutron stars"
+        ]
     },
 
     "dna": {
@@ -192,7 +246,13 @@ DNA is the molecule that carries genetic instructions for life. It's found in al
 - If you stretched all DNA in your body end-to-end, it would reach the sun and back 100+ times!
 - 99.9% of human DNA is identical between people""",
         "confidence": 0.95,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "What is RNA and how is it different from DNA?",
+            "How do genetic mutations occur?",
+            "What is CRISPR gene editing?",
+            "Explain heredity and genetics"
+        ]
     },
 
     # ============================================================
@@ -271,7 +331,13 @@ Large Language Models (like me!) are:
 - AI agents that take actions
 - Integration with robotics""",
         "confidence": 0.96,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "How does machine learning work?",
+            "What are neural networks?",
+            "Tell me about ChatGPT and LLMs",
+            "What is the future of AI?"
+        ]
     },
 
     "machine_learning": {
@@ -358,7 +424,13 @@ Machine learning is a subset of AI where systems learn patterns from data withou
 
 **Regularization:** Technique to prevent overfitting""",
         "confidence": 0.95,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "What is deep learning?",
+            "Explain neural networks in detail",
+            "What is the difference between AI and ML?",
+            "How is machine learning used in healthcare?"
+        ]
     },
 
     # ============================================================
@@ -419,7 +491,13 @@ One of the greatest physicists of all time. Revolutionized our understanding of 
 - Known for wild hair and unconventional style
 - Died in Princeton, New Jersey""",
         "confidence": 0.95,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "Tell me more about the Theory of Relativity",
+            "What is E=mc² and why is it important?",
+            "How did Einstein win the Nobel Prize?",
+            "Tell me about Marie Curie"
+        ]
     },
 
     "marie_curie": {
@@ -473,7 +551,13 @@ First woman to win a Nobel Prize. Only person to win Nobel Prizes in two differe
 - Showed women could be great scientists
 - Changed public perception of science""",
         "confidence": 0.94,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "What is radioactivity?",
+            "Tell me about the Nobel Prize",
+            "Who are other famous women in science?",
+            "Tell me about Albert Einstein"
+        ]
     },
 
     # ============================================================
@@ -559,7 +643,13 @@ The study of quantity, structure, space, and change through abstract reasoning a
 - Carl Gauss (statistics, number theory)
 - Leonhard Euler (prolific across all fields)""",
         "confidence": 0.94,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "Explain calculus in simple terms",
+            "What is the Pythagorean theorem?",
+            "How is math used in real life?",
+            "Tell me about statistics and probability"
+        ]
     },
 
     # ============================================================
@@ -631,7 +721,13 @@ The process by which living organisms change and adapt over time. Life on Earth 
 - Homo sapiens emerged ~300,000 years ago
 - Modern behavior appeared ~70,000 years ago""",
         "confidence": 0.94,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "Tell me about human evolution in detail",
+            "What is natural selection?",
+            "How do fossils form?",
+            "What caused the dinosaurs to go extinct?"
+        ]
     },
 
     # ============================================================
@@ -716,7 +812,13 @@ The long-term shift in global temperatures and weather patterns, primarily cause
 - IPCC: Authoritative body on climate science
 - Evidence: Temperature records, ice cores, ocean acidification""",
         "confidence": 0.93,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "What are renewable energy sources?",
+            "How does the greenhouse effect work?",
+            "What is the Paris Agreement?",
+            "How can individuals reduce their carbon footprint?"
+        ]
     },
 
     # ============================================================
@@ -814,7 +916,13 @@ The second global military conflict, the deadliest war in human history, involvi
 - Holocaust remembrance
 - Lessons about dangers of authoritarianism""",
         "confidence": 0.94,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "What caused World War 1?",
+            "Tell me about the Holocaust in detail",
+            "What was the Cold War?",
+            "How did the United Nations form?"
+        ]
     },
 
     # ============================================================
@@ -904,7 +1012,13 @@ Beyond cryptocurrency:
 - Regulation increasing
 - Technology still evolving""",
         "confidence": 0.92,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "How does Bitcoin mining work?",
+            "What are smart contracts?",
+            "Is cryptocurrency a good investment?",
+            "What is blockchain technology?"
+        ]
     },
 
     # ============================================================
@@ -1016,7 +1130,13 @@ Ancient philosophical school founded in Athens around 300 BCE. Teaches virtue is
 - Mental health and resilience training
 - Philosophy of acceptance and peace""",
         "confidence": 0.93,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "Who was Marcus Aurelius?",
+            "What is the difference between Stoicism and Buddhism?",
+            "How can I apply Stoicism in daily life?",
+            "Tell me about Epictetus"
+        ]
     },
 
     # ============================================================
@@ -1141,7 +1261,13 @@ pip install package_name
 5. Web: Flask or Django
 6. Advanced: Async, decorators, metaclasses""",
         "confidence": 0.95,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "What is Django and how does it work?",
+            "Python vs JavaScript: which should I learn?",
+            "How do I start learning Python?",
+            "What are Python's best libraries?"
+        ]
     },
 }
 
@@ -1180,8 +1306,8 @@ def find_best_match(question: str) -> Tuple[Optional[str], float]:
             # Check for pattern match
             pattern_lower = pattern.lower()
             
-            # Exact match at start or in middle
-            if q_lower.startswith(pattern_lower) or pattern_lower in q_lower:
+            # Exact match at start or as a whole word in middle
+            if q_lower.startswith(pattern_lower) or re.search(r'\b' + re.escape(pattern_lower) + r'\b', q_lower):
                 score = data.get("confidence", 0.8)
                 if score > best_score:
                     best_score = score
@@ -1262,6 +1388,17 @@ def format_answer_with_sources(query: str, results: List[Dict]) -> tuple:
     
     return ''.join(answer_parts), results
 
+def generate_suggestions(query: str, results: Optional[List[Dict]] = None) -> List[str]:
+    """Generate contextual follow-up suggestions for web search results"""
+    cleaned = summarize_question(query)
+    suggestions = [
+        f"Tell me more about {cleaned}",
+        f"What are the latest developments in {cleaned}?",
+        f"Why is {cleaned} important?",
+        f"How does {cleaned} affect everyday life?"
+    ]
+    return suggestions[:4]
+
 # ============================================================
 # PART 3: MAIN AI RESPONSE ENGINE
 # ============================================================
@@ -1269,10 +1406,11 @@ def format_answer_with_sources(query: str, results: List[Dict]) -> tuple:
 def ai_respond(question: str) -> Dict:
     """
     Main AI brain:
-    1. Try to find answer in knowledge base
-    2. If found AND not time-sensitive → use knowledge base
-    3. If not found OR time-sensitive → search web
-    4. Return best answer with metadata
+    1. Try to find context in knowledge base
+    2. If found AND not time-sensitive → use knowledge base context
+    3. If not found OR time-sensitive → search web for context
+    4. Call Gemini with context and question
+    5. Return best answer with metadata
     """
     
     q_lower = question.lower().strip()
@@ -1283,65 +1421,89 @@ def ai_respond(question: str) -> Dict:
     # Step 2: Check if time-sensitive
     is_time_sensitive = should_search_web(question, best_topic is not None)
     
-    # Step 3: If we have knowledge match and it's not time-sensitive
+    context = ""
+    source_type = ""
+    sources = []
+    suggestions = []
+    from_web_search = False
+    
+    # Step 3: Get context
     if best_topic and not is_time_sensitive:
         data = AI_KNOWLEDGE[best_topic]
-        return {
-            "answer": data["answer"],
-            "sources": [],
-            "confidence": confidence,
-            "from_web_search": False,
-            "is_thinking": False,
-            "source_type": "Knowledge Base"
-        }
-    
-    # Step 4: Search web (either no match or time-sensitive)
-    if best_topic and is_time_sensitive:
-        print(f"⏰ Time-sensitive question detected, searching web for latest: {question}")
+        context = data["answer"]
+        source_type = "Knowledge Base"
+        suggestions = data.get("suggestions", [])
+        from_web_search = False
     else:
-        print(f"📚 Not in knowledge base, searching web for: {question}")
-    
-    results = search_web(question)
-    
-    if results:
-        answer, sources = format_answer_with_sources(question, results)
+        if best_topic and is_time_sensitive:
+            print(f"⏰ Time-sensitive question detected, searching web for latest: {question}")
+        else:
+            print(f"📚 Not in knowledge base, searching web for: {question}")
+            
+        results = search_web(question)
+        if results:
+            context, sources = format_answer_with_sources(question, results)
+            source_type = "Web Search"
+            from_web_search = True
+            suggestions = generate_suggestions(question, results)
+            confidence = 0.85
+        elif best_topic:
+            data = AI_KNOWLEDGE[best_topic]
+            context = f"{data['answer']}\n\n*Note: Web search was unavailable for latest info.*"
+            source_type = "Knowledge Base (Web search unavailable)"
+            suggestions = data.get("suggestions", [])
+            from_web_search = False
+            confidence = 0.6
+        else:
+            context = "No relevant context found."
+            source_type = "No Match"
+            from_web_search = False
+            confidence = 0.2
+
+    # If GEMINI API is missing, fallback to old behavior
+    if not GEMINI_API_KEY:
+        if context == "No relevant context found.":
+            answer = f"I couldn't find information about '{summarize_question(question)}' in my knowledge base or on the web. Could you rephrase your question? (Note: Gemini API Key is missing)"
+        else:
+            answer = context
         return {
             "answer": answer,
             "sources": sources,
-            "confidence": 0.85,
-            "from_web_search": True,
-            "is_thinking": True,
-            "source_type": "Web Search"
+            "confidence": confidence,
+            "from_web_search": from_web_search,
+            "is_thinking": from_web_search,
+            "source_type": source_type,
+            "suggestions": suggestions
         }
-    
-    # Step 5: If we had knowledge match but it's time-sensitive and web search failed
-    if best_topic and is_time_sensitive:
-        data = AI_KNOWLEDGE[best_topic]
-        answer_with_note = f"{data['answer']}\n\n---\n\n*Note: I tried to search the web for the latest information, but couldn't find results. The above information is from my knowledge base.*"
-        return {
-            "answer": answer_with_note,
-            "sources": [],
-            "confidence": 0.6,
-            "from_web_search": False,
-            "is_thinking": False,
-            "source_type": "Knowledge Base (Web search unavailable)"
-        }
-    
-    # Step 6: No results anywhere
+
+    # Step 4: Call Gemini
+    try:
+        model = genai.GenerativeModel(
+            model_name="gemini-1.5-flash",
+            system_instruction=GEMINI_SYSTEM_PROMPT
+        )
+        prompt = f"Knowledge Base Context:\n{context}\n\nUser Question:\n{question}"
+        response = model.generate_content(prompt)
+        answer = response.text
+        
+    except Exception as e:
+        answer = f"Error communicating with Gemini AI: {str(e)}\n\nFallback context:\n{context}"
+        
     return {
-        "answer": f"I couldn't find information about '{summarize_question(question)}' in my knowledge base or on the web. Could you rephrase your question?",
-        "sources": [],
-        "confidence": 0.2,
-        "from_web_search": False,
-        "is_thinking": False,
-        "source_type": "No Match"
+        "answer": answer,
+        "sources": sources,
+        "confidence": confidence,
+        "from_web_search": from_web_search,
+        "is_thinking": True,
+        "source_type": source_type + " + Gemini AI",
+        "suggestions": suggestions
     }
 
 # ============================================================
 # PART 4: STREAMING SUPPORT
 # ============================================================
 
-async def stream_response(answer: str, sources: List[Dict] = None) -> AsyncGenerator:
+async def stream_response(answer: str, sources: Optional[List[Dict]] = None) -> AsyncGenerator[str, None]:
     """Stream the response word by word"""
     words = answer.split(' ')
     
@@ -1395,6 +1557,7 @@ async def chat(message: str = Query(..., min_length=1, description="Your questio
         "confidence": response["confidence"],
         "from_web_search": response["from_web_search"],
         "source_type": response["source_type"],
+        "suggestions": response.get("suggestions", []),
         "timestamp": datetime.now().isoformat()
     }
 
@@ -1439,6 +1602,11 @@ async def chat_stream(message: str = Query(..., min_length=1, description="Your 
         if response["sources"]:
             sources_chunk = {"type": "sources", "sources": response["sources"], "done": False}
             yield f"data: {json.dumps(sources_chunk)}\n\n"
+        
+        # Suggestions
+        if response.get("suggestions"):
+            suggestions_chunk = {"type": "suggestions", "suggestions": response["suggestions"], "done": False}
+            yield f"data: {json.dumps(suggestions_chunk)}\n\n"
         
         # Done
         done_chunk = {
