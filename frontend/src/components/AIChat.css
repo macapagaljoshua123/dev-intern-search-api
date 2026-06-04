@@ -4,17 +4,35 @@
   --input-bg: #22202a;
   --text-main: #f3f3f3;
   --text-muted: #888691;
-  --purple-accent: #7c3aed;
-  --purple-light: #9353d3;
+  --purple-accent: #8b0a57;
+  --purple-light: #b50e66;
   --border-color: #34313f;
   --hover-bg: #2d2b38;
+  --code-bg: rgba(255, 255, 255, 0.1);
+  --pre-bg: #1a1820;
+  --dot-color: rgba(255, 255, 255, 0.03);
+  --badge-bg: rgba(181, 14, 102, 0.2);
+}
+
+[data-theme="light"] {
+  --sidebar-bg: #e9e8ec;
+  --main-bg: #f4f3f6;
+  --input-bg: #ffffff;
+  --text-main: #2d2b38;
+  --text-muted: #6b6875;
+  --purple-accent: #8b0a57;
+  --purple-light: #b50e66;
+  --border-color: #d6d4df;
+  --hover-bg: #dcdbe2;
+  --code-bg: rgba(0, 0, 0, 0.06);
+  --pre-bg: #e2e1e6;
+  --dot-color: rgba(0, 0, 0, 0.04);
+  --badge-bg: rgba(181, 14, 102, 0.15);
 }
 
 body {
   margin: 0;
   padding: 0;
-  background-color: var(--main-bg);
-  color: var(--text-main);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
@@ -22,6 +40,8 @@ body {
   display: flex;
   height: 100vh;
   width: 100vw;
+  background-color: var(--main-bg);
+  color: var(--text-main);
   overflow: hidden;
 }
 
@@ -51,6 +71,7 @@ body {
   width: 24px;
   height: 24px;
   background-color: var(--purple-accent);
+  color: #ffffff;
   border-radius: 6px;
   display: flex;
   align-items: center;
@@ -64,8 +85,8 @@ body {
 }
 
 .badge {
-  background-color: rgba(124, 58, 237, 0.2);
-  color: var(--purple-light);
+  background-color: var(--badge-bg);
+  color: var(--purple-accent);
   font-size: 10px;
   padding: 2px 6px;
   border-radius: 10px;
@@ -129,11 +150,11 @@ body {
   position: relative;
   background-color: var(--main-bg);
   background-image: 
-    radial-gradient(circle at 15% 50%, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    radial-gradient(circle at 85% 30%, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    radial-gradient(circle at 50% 80%, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    radial-gradient(circle at 70% 60%, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    radial-gradient(circle at 25% 20%, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    radial-gradient(circle at 15% 50%, var(--dot-color) 1px, transparent 1px),
+    radial-gradient(circle at 85% 30%, var(--dot-color) 1px, transparent 1px),
+    radial-gradient(circle at 50% 80%, var(--dot-color) 1px, transparent 1px),
+    radial-gradient(circle at 70% 90%, var(--dot-color) 1px, transparent 1px),
+    radial-gradient(circle at 25% 20%, var(--dot-color) 1px, transparent 1px);
 }
 
 .empty-state {
@@ -359,8 +380,8 @@ body {
 }
 
 .icon-btn.send {
-  background-color: #3d3b46;
-  color: var(--text-main);
+  background-color: var(--purple-accent);
+  color: #ffffff;
 }
 
 .icon-btn.send:hover {
@@ -436,7 +457,7 @@ kbd {
 }
 
 .markdown-body code {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--code-bg);
   padding: 0.2em 0.4em;
   border-radius: 4px;
   font-family: monospace;
@@ -444,7 +465,7 @@ kbd {
 }
 
 .markdown-body pre {
-  background-color: #1a1820;
+  background-color: var(--pre-bg);
   padding: 16px;
   border-radius: 8px;
   overflow-x: auto;
@@ -489,5 +510,5 @@ kbd {
 }
 
 .markdown-body tr:nth-child(2n) {
-  background-color: rgba(255, 255, 255, 0.02);
+  background-color: var(--code-bg);
 }
