@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from typing import List, Dict, AsyncGenerator, Optional, Tuple
@@ -7,13 +7,24 @@ from ddgs import DDGS
 import re
 import json
 import asyncio
-import uuid
-from pathlib import Path
-from pydantic import BaseModel
 import os
 from dotenv import load_dotenv
+import google.generativeai as genai
 
 load_dotenv()
+
+# Initialize Gemini
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+    
+GEMINI_SYSTEM_PROMPT = """You are Gemini, a highly accurate, smart, and helpful AI assistant. You are provided with a "Knowledge Base Context" to help answer the user's question, but you must use it critically.
+
+STRICT RULES FOR ANSWERING:
+1. RELEVANCE CHECK: Before answering, look at the user's question and the provided context. If the user asks about one topic (e.g., "What is HTML?") but the provided context is about a completely different topic (e.g., "Machine Learning"), you MUST IGNORE the context entirely.
+2. GENERAL KNOWLEDGE FALLBACK: If the context is irrelevant or mismatched, do not use it. Instead, answer the user's question accurately using your own internal general knowledge.
+3. DIRECT ANSWER: Always answer the user's exact question. Never change the topic or talk about what is in the context if it doesn't match the prompt.
+4. FORMATTING: Use clean Markdown. Use bold text for emphasis, bullet points for lists, and clear headers to make the answer highly readable."""
 
 app = FastAPI(
     title="AI Chat Assistant with Knowledge Base",
@@ -29,29 +40,6 @@ app.add_middleware(
 )
 
 # ============================================================
-# HISTORY STORAGE
-# ============================================================
-HISTORY_DIR = Path(__file__).parent / "chat_history"
-HISTORY_DIR.mkdir(exist_ok=True)
-
-
-class MessageModel(BaseModel):
-    id: str
-    type: str
-    content: str
-    sources: Optional[List[Dict]] = None
-    sourceType: Optional[str] = None
-    timestamp: str
-
-
-class ConversationModel(BaseModel):
-    id: Optional[str] = None
-    title: str
-    messages: List[MessageModel]
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
-
-# ============================================================
 # PART 1: COMPREHENSIVE AI KNOWLEDGE BASE
 # ============================================================
 
@@ -60,28 +48,52 @@ AI_KNOWLEDGE = {
         "patterns": ["^hi$", "^hello$", "^hey$", "^good morning$", "^good afternoon$", "^good evening$", "^howdy$", "^sup$"],
         "answer": "Hello! 👋 I'm your AI assistant. I have extensive knowledge about many topics. What can I help you with?",
         "confidence": 0.99,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "Tell me about Albert Einstein",
+            "What is artificial intelligence?",
+            "Explain photosynthesis",
+            "How does machine learning work?"
+        ]
     },
     
     "how_are_you": {
         "patterns": ["^how are you$", "^how are you doing$", "^how's it going$", "how are you", "how's it going"],
         "answer": "I'm doing great! 😊 Thanks for asking. I'm here to help you with anything you need. What would you like to know?",
         "confidence": 0.99,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "What topics can you help with?",
+            "Tell me about climate change",
+            "Explain cryptocurrency",
+            "What is stoicism?"
+        ]
     },
     
     "what_is_your_name": {
         "patterns": ["what is your name", "your name", "who are you", "what are you called"],
         "answer": "I'm your AI Chat Assistant! I was created by Joshua Macapagal and Ady. I have a comprehensive knowledge base and can search the web for the latest information when needed.",
         "confidence": 0.98,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "Who created you?",
+            "What topics do you know about?",
+            "What is artificial intelligence?",
+            "How does your web search work?"
+        ]
     },
     
     "who_created_you": {
         "patterns": ["who created you", "who made you", "your creator", "who built you", "who developed you"],
         "answer": "I was created by **Joshua Macapagal** and **Ady** as an AI assistant with both a comprehensive knowledge base and real-time web search capabilities.",
         "confidence": 0.98,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "What can you do?",
+            "What topics do you know about?",
+            "Tell me about artificial intelligence",
+            "How does your knowledge base work?"
+        ]
     },
 
     # ============================================================
@@ -125,7 +137,13 @@ Photosynthesis is the process by which plants convert sunlight into chemical ene
 
 Photosynthesis is the foundation of almost all life on Earth. It converts light energy into chemical energy that flows through food chains. Without it, there would be no oxygen and no food!""",
         "confidence": 0.95,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "What is the Calvin Cycle in detail?",
+            "How do plants absorb sunlight?",
+            "What is cellular respiration?",
+            "Why are leaves green?"
+        ]
     },
 
     "black_holes": {
@@ -170,7 +188,13 @@ Black holes form when massive stars (20+ solar masses) reach the end of their li
 
 Sagittarius A* is a supermassive black hole at the center of the Milky Way, about 4 million solar masses. In 2020, we got the first image of it!""",
         "confidence": 0.94,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "What is Hawking radiation?",
+            "How was the first black hole image taken?",
+            "What happens if you fall into a black hole?",
+            "Tell me about neutron stars"
+        ]
     },
 
     "dna": {
@@ -222,7 +246,13 @@ DNA is the molecule that carries genetic instructions for life. It's found in al
 - If you stretched all DNA in your body end-to-end, it would reach the sun and back 100+ times!
 - 99.9% of human DNA is identical between people""",
         "confidence": 0.95,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "What is RNA and how is it different from DNA?",
+            "How do genetic mutations occur?",
+            "What is CRISPR gene editing?",
+            "Explain heredity and genetics"
+        ]
     },
 
     # ============================================================
@@ -301,7 +331,13 @@ Large Language Models (like me!) are:
 - AI agents that take actions
 - Integration with robotics""",
         "confidence": 0.96,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "How does machine learning work?",
+            "What are neural networks?",
+            "Tell me about ChatGPT and LLMs",
+            "What is the future of AI?"
+        ]
     },
 
     "machine_learning": {
@@ -388,7 +424,13 @@ Machine learning is a subset of AI where systems learn patterns from data withou
 
 **Regularization:** Technique to prevent overfitting""",
         "confidence": 0.95,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "What is deep learning?",
+            "Explain neural networks in detail",
+            "What is the difference between AI and ML?",
+            "How is machine learning used in healthcare?"
+        ]
     },
 
     # ============================================================
@@ -449,7 +491,13 @@ One of the greatest physicists of all time. Revolutionized our understanding of 
 - Known for wild hair and unconventional style
 - Died in Princeton, New Jersey""",
         "confidence": 0.95,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "Tell me more about the Theory of Relativity",
+            "What is E=mc² and why is it important?",
+            "How did Einstein win the Nobel Prize?",
+            "Tell me about Marie Curie"
+        ]
     },
 
     "marie_curie": {
@@ -503,7 +551,13 @@ First woman to win a Nobel Prize. Only person to win Nobel Prizes in two differe
 - Showed women could be great scientists
 - Changed public perception of science""",
         "confidence": 0.94,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "What is radioactivity?",
+            "Tell me about the Nobel Prize",
+            "Who are other famous women in science?",
+            "Tell me about Albert Einstein"
+        ]
     },
 
     # ============================================================
@@ -589,7 +643,13 @@ The study of quantity, structure, space, and change through abstract reasoning a
 - Carl Gauss (statistics, number theory)
 - Leonhard Euler (prolific across all fields)""",
         "confidence": 0.94,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "Explain calculus in simple terms",
+            "What is the Pythagorean theorem?",
+            "How is math used in real life?",
+            "Tell me about statistics and probability"
+        ]
     },
 
     # ============================================================
@@ -661,7 +721,13 @@ The process by which living organisms change and adapt over time. Life on Earth 
 - Homo sapiens emerged ~300,000 years ago
 - Modern behavior appeared ~70,000 years ago""",
         "confidence": 0.94,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "Tell me about human evolution in detail",
+            "What is natural selection?",
+            "How do fossils form?",
+            "What caused the dinosaurs to go extinct?"
+        ]
     },
 
     # ============================================================
@@ -746,7 +812,13 @@ The long-term shift in global temperatures and weather patterns, primarily cause
 - IPCC: Authoritative body on climate science
 - Evidence: Temperature records, ice cores, ocean acidification""",
         "confidence": 0.93,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "What are renewable energy sources?",
+            "How does the greenhouse effect work?",
+            "What is the Paris Agreement?",
+            "How can individuals reduce their carbon footprint?"
+        ]
     },
 
     # ============================================================
@@ -844,7 +916,13 @@ The second global military conflict, the deadliest war in human history, involvi
 - Holocaust remembrance
 - Lessons about dangers of authoritarianism""",
         "confidence": 0.94,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "What caused World War 1?",
+            "Tell me about the Holocaust in detail",
+            "What was the Cold War?",
+            "How did the United Nations form?"
+        ]
     },
 
     # ============================================================
@@ -934,7 +1012,13 @@ Beyond cryptocurrency:
 - Regulation increasing
 - Technology still evolving""",
         "confidence": 0.92,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "How does Bitcoin mining work?",
+            "What are smart contracts?",
+            "Is cryptocurrency a good investment?",
+            "What is blockchain technology?"
+        ]
     },
 
     # ============================================================
@@ -1046,7 +1130,13 @@ Ancient philosophical school founded in Athens around 300 BCE. Teaches virtue is
 - Mental health and resilience training
 - Philosophy of acceptance and peace""",
         "confidence": 0.93,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "Who was Marcus Aurelius?",
+            "What is the difference between Stoicism and Buddhism?",
+            "How can I apply Stoicism in daily life?",
+            "Tell me about Epictetus"
+        ]
     },
 
     # ============================================================
@@ -1171,7 +1261,13 @@ pip install package_name
 5. Web: Flask or Django
 6. Advanced: Async, decorators, metaclasses""",
         "confidence": 0.95,
-        "from_web": False
+        "from_web": False,
+        "suggestions": [
+            "What is Django and how does it work?",
+            "Python vs JavaScript: which should I learn?",
+            "How do I start learning Python?",
+            "What are Python's best libraries?"
+        ]
     },
 }
 
@@ -1210,8 +1306,8 @@ def find_best_match(question: str) -> Tuple[Optional[str], float]:
             # Check for pattern match
             pattern_lower = pattern.lower()
             
-            # Exact match at start or in middle
-            if q_lower.startswith(pattern_lower) or pattern_lower in q_lower:
+            # Exact match at start or as a whole word in middle
+            if q_lower.startswith(pattern_lower) or re.search(r'\b' + re.escape(pattern_lower) + r'\b', q_lower):
                 score = data.get("confidence", 0.8)
                 if score > best_score:
                     best_score = score
@@ -1272,93 +1368,36 @@ def search_web(query: str, max_results: int = 5) -> List[Dict]:
         print(f"❌ Search error: {e}")
         return []
 
-# Setup Anthropic client if key is provided in .env
-api_key = os.getenv("ANTHROPIC_API_KEY")
-if api_key and api_key != "your_api_key_here":
-    try:
-        import anthropic
-        _anthropic_client = anthropic.Anthropic(api_key=api_key)
-        _HAS_ANTHROPIC = True
-        print("✅ Anthropic API configured for web search synthesis")
-    except ImportError:
-        print("❌ anthropic package not found. Run: pip install anthropic")
-        _HAS_ANTHROPIC = False
-        _anthropic_client = None
-    except Exception as e:
-        print(f"❌ Failed to initialize Anthropic client: {e}")
-        _HAS_ANTHROPIC = False
-        _anthropic_client = None
-else:
-    _HAS_ANTHROPIC = False
-    _anthropic_client = None
-
 def format_answer_with_sources(query: str, results: List[Dict]) -> tuple:
-    """Use web results to synthesize a formatted answer."""
+    """Format web search results with sources"""
     if not results:
-        return f"I searched the web for '{summarize_question(query)}' but couldn't find relevant information. Try rephrasing your question.", []
+        return f"I searched the web for '{summarize_question(query)}' but couldn't find relevant information.", []
+    
+    answer_parts = [f"Based on my web search for: **{summarize_question(query)}**\n"]
+    
+    for i, result in enumerate(results[:3], 1):
+        snippet = result['snippet']
+        source_name = result['source'].replace('www.', '')
+        answer_parts.append(f"\n**Source {i}: {result['title']}** ({source_name})")
+        answer_parts.append(f"\n{snippet[:250]}...")
+    
+    answer_parts.append("\n\n---\n")
+    answer_parts.append("\n📚 **All Sources:**")
+    for result in results:
+        answer_parts.append(f"\n• [{result['title']}]({result['url']})")
+    
+    return ''.join(answer_parts), results
 
-    # Build context from top results
-    context_parts = []
-    for i, r in enumerate(results[:5], 1):
-        context_parts.append(f"[Source {i}] {r['title']}\nURL: {r['url']}\n{r['snippet']}\n")
-    context = "\n".join(context_parts)
-
-    # Try Claude API synthesis first
-    if _HAS_ANTHROPIC and _anthropic_client:
-        try:
-            system_prompt = """You are a knowledgeable AI assistant. Given web search results, synthesize a comprehensive, well-structured answer.
-
-FORMATTING RULES — follow exactly:
-- Start with a short 1-2 sentence definition/overview
-- Use ## for main section headings
-- Use **bold** for key terms
-- Use bullet lists (- item) for features, pros/cons, or enumerations
-- Use numbered lists (1. step) for sequential steps
-- Always include a ## Example section with a real, runnable code example if the topic is technical
-- Always include an ## According to Sources section summarizing what the sources say
-- Keep the answer thorough but scannable — aim for 250-400 words
-- End with a ## Key Takeaway one-liner
-
-Do NOT add a Sources list at the end — that is handled separately."""
-
-            user_prompt = f"""Question: {query}
-
-Web search results:
-{context}
-
-Write a complete, well-formatted answer using the formatting rules."""
-
-            message = _anthropic_client.messages.create(
-                model="claude-sonnet-4-20250514",
-                max_tokens=1200,
-                system=system_prompt,
-                messages=[{"role": "user", "content": user_prompt}]
-            )
-            answer = message.content[0].text
-            return answer, results
-        except Exception as e:
-            print(f"Claude API error, falling back to snippet summary: {e}")
-
-    # Fallback: clean snippet summary
-    summary_lines = []
-    seen = set()
-    for r in results[:5]:
-        for s in re.split(r'(?<=[.!?])\s+', r.get('snippet', '')):
-            s = s.strip()
-            if len(s) > 40 and s not in seen:
-                seen.add(s)
-                summary_lines.append(s)
-            if len(summary_lines) >= 10:
-                break
-        if len(summary_lines) >= 10:
-            break
-
-    answer_parts = [f"## {summarize_question(query)}\n"]
-    answer_parts.append("\n".join(f"- {s}" for s in summary_lines))
-    answer_parts.append("\n\n**Sources:**")
-    for r in results[:5]:
-        answer_parts.append(f"\n- [{r['title']}]({r['url']})")
-    return "\n".join(answer_parts), results
+def generate_suggestions(query: str, results: Optional[List[Dict]] = None) -> List[str]:
+    """Generate contextual follow-up suggestions for web search results"""
+    cleaned = summarize_question(query)
+    suggestions = [
+        f"Tell me more about {cleaned}",
+        f"What are the latest developments in {cleaned}?",
+        f"Why is {cleaned} important?",
+        f"How does {cleaned} affect everyday life?"
+    ]
+    return suggestions[:4]
 
 # ============================================================
 # PART 3: MAIN AI RESPONSE ENGINE
@@ -1367,10 +1406,11 @@ Write a complete, well-formatted answer using the formatting rules."""
 def ai_respond(question: str) -> Dict:
     """
     Main AI brain:
-    1. Try to find answer in knowledge base
-    2. If found AND not time-sensitive → use knowledge base
-    3. If not found OR time-sensitive → search web
-    4. Return best answer with metadata
+    1. Try to find context in knowledge base
+    2. If found AND not time-sensitive → use knowledge base context
+    3. If not found OR time-sensitive → search web for context
+    4. Call Gemini with context and question
+    5. Return best answer with metadata
     """
     
     q_lower = question.lower().strip()
@@ -1381,65 +1421,89 @@ def ai_respond(question: str) -> Dict:
     # Step 2: Check if time-sensitive
     is_time_sensitive = should_search_web(question, best_topic is not None)
     
-    # Step 3: If we have knowledge match and it's not time-sensitive
+    context = ""
+    source_type = ""
+    sources = []
+    suggestions = []
+    from_web_search = False
+    
+    # Step 3: Get context
     if best_topic and not is_time_sensitive:
         data = AI_KNOWLEDGE[best_topic]
-        return {
-            "answer": data["answer"],
-            "sources": [],
-            "confidence": confidence,
-            "from_web_search": False,
-            "is_thinking": False,
-            "source_type": "Knowledge Base"
-        }
-    
-    # Step 4: Search web (either no match or time-sensitive)
-    if best_topic and is_time_sensitive:
-        print(f"⏰ Time-sensitive question detected, searching web for latest: {question}")
+        context = data["answer"]
+        source_type = "Knowledge Base"
+        suggestions = data.get("suggestions", [])
+        from_web_search = False
     else:
-        print(f"📚 Not in knowledge base, searching web for: {question}")
-    
-    results = search_web(question)
-    
-    if results:
-        answer, sources = format_answer_with_sources(question, results)
+        if best_topic and is_time_sensitive:
+            print(f"⏰ Time-sensitive question detected, searching web for latest: {question}")
+        else:
+            print(f"📚 Not in knowledge base, searching web for: {question}")
+            
+        results = search_web(question)
+        if results:
+            context, sources = format_answer_with_sources(question, results)
+            source_type = "Web Search"
+            from_web_search = True
+            suggestions = generate_suggestions(question, results)
+            confidence = 0.85
+        elif best_topic:
+            data = AI_KNOWLEDGE[best_topic]
+            context = f"{data['answer']}\n\n*Note: Web search was unavailable for latest info.*"
+            source_type = "Knowledge Base (Web search unavailable)"
+            suggestions = data.get("suggestions", [])
+            from_web_search = False
+            confidence = 0.6
+        else:
+            context = "No relevant context found."
+            source_type = "No Match"
+            from_web_search = False
+            confidence = 0.2
+
+    # If GEMINI API is missing, fallback to old behavior
+    if not GEMINI_API_KEY:
+        if context == "No relevant context found.":
+            answer = f"I couldn't find information about '{summarize_question(question)}' in my knowledge base or on the web. Could you rephrase your question? (Note: Gemini API Key is missing)"
+        else:
+            answer = context
         return {
             "answer": answer,
             "sources": sources,
-            "confidence": 0.85,
-            "from_web_search": True,
-            "is_thinking": True,
-            "source_type": "Web Search"
+            "confidence": confidence,
+            "from_web_search": from_web_search,
+            "is_thinking": from_web_search,
+            "source_type": source_type,
+            "suggestions": suggestions
         }
-    
-    # Step 5: If we had knowledge match but it's time-sensitive and web search failed
-    if best_topic and is_time_sensitive:
-        data = AI_KNOWLEDGE[best_topic]
-        answer_with_note = f"{data['answer']}\n\n---\n\n*Note: I tried to search the web for the latest information, but couldn't find results. The above information is from my knowledge base.*"
-        return {
-            "answer": answer_with_note,
-            "sources": [],
-            "confidence": 0.6,
-            "from_web_search": False,
-            "is_thinking": False,
-            "source_type": "Knowledge Base (Web search unavailable)"
-        }
-    
-    # Step 6: No results anywhere
+
+    # Step 4: Call Gemini
+    try:
+        model = genai.GenerativeModel(
+            model_name="gemini-1.5-flash",
+            system_instruction=GEMINI_SYSTEM_PROMPT
+        )
+        prompt = f"Knowledge Base Context:\n{context}\n\nUser Question:\n{question}"
+        response = model.generate_content(prompt)
+        answer = response.text
+        
+    except Exception as e:
+        answer = f"Error communicating with Gemini AI: {str(e)}\n\nFallback context:\n{context}"
+        
     return {
-        "answer": f"I couldn't find information about '{summarize_question(question)}' in my knowledge base or on the web. Could you rephrase your question?",
-        "sources": [],
-        "confidence": 0.2,
-        "from_web_search": False,
-        "is_thinking": False,
-        "source_type": "No Match"
+        "answer": answer,
+        "sources": sources,
+        "confidence": confidence,
+        "from_web_search": from_web_search,
+        "is_thinking": True,
+        "source_type": source_type + " + Gemini AI",
+        "suggestions": suggestions
     }
 
 # ============================================================
 # PART 4: STREAMING SUPPORT
 # ============================================================
 
-async def stream_response(answer: str, sources: List[Dict] = None) -> AsyncGenerator:
+async def stream_response(answer: str, sources: Optional[List[Dict]] = None) -> AsyncGenerator[str, None]:
     """Stream the response word by word"""
     words = answer.split(' ')
     
@@ -1493,147 +1557,68 @@ async def chat(message: str = Query(..., min_length=1, description="Your questio
         "confidence": response["confidence"],
         "from_web_search": response["from_web_search"],
         "source_type": response["source_type"],
+        "suggestions": response.get("suggestions", []),
         "timestamp": datetime.now().isoformat()
     }
 
 @app.get("/chat-stream")
 async def chat_stream(message: str = Query(..., min_length=1, description="Your question")):
-    """Streaming chat endpoint with step-by-step loading indicators"""
+    """Streaming chat endpoint"""
     print(f"📝 Received (streaming): {message}")
-
+    response = ai_respond(message)
+    
     async def generate():
-        # Step 1: Metadata — immediately tell frontend we received the message
-        yield f"data: {json.dumps({'type': 'status', 'status': 'Thinking...', 'done': False})}\n\n"
-        await asyncio.sleep(0.05)
-
-        # Step 2: Check knowledge base / decide if we need web search
-        best_topic, confidence = find_best_match(message)
-        is_time_sensitive = should_search_web(message, best_topic is not None)
-        use_web = not best_topic or is_time_sensitive
-
-        if use_web:
-            yield f"data: {json.dumps({'type': 'status', 'status': 'Searching the web...', 'done': False})}\n\n"
-            await asyncio.sleep(0.05)
-
-            results = await asyncio.to_thread(search_web, message)
-
-            if results:
-                yield f"data: {json.dumps({'type': 'status', 'status': 'Scraping web data...', 'done': False})}\n\n"
-                await asyncio.sleep(0.1)
-
-                yield f"data: {json.dumps({'type': 'status', 'status': 'Synthesizing answer with AI...', 'done': False})}\n\n"
-                await asyncio.sleep(0.05)
-
-                answer, sources = await asyncio.to_thread(format_answer_with_sources, message, results)
-                source_type = "Web Search"
-            else:
-                if best_topic:
-                    answer = AI_KNOWLEDGE[best_topic]["answer"]
-                    sources = []
-                    source_type = "Knowledge Base (Web unavailable)"
-                else:
-                    answer = f"I couldn't find information about '{summarize_question(message)}'. Try rephrasing your question."
-                    sources = []
-                    source_type = "No Match"
+        # Send metadata
+        metadata = {
+            "type": "metadata",
+            "question": message,
+            "question_summary": summarize_question(message),
+            "from_web_search": response["from_web_search"],
+            "source_type": response["source_type"],
+            "done": False
+        }
+        yield f"data: {json.dumps(metadata)}\n\n"
+        
+        # Status indicators
+        if response["from_web_search"]:
+            status = {"type": "status", "status": "🔍 Searching the web...", "done": False}
+            yield f"data: {json.dumps(status)}\n\n"
+            await asyncio.sleep(0.3)
         else:
-            yield f"data: {json.dumps({'type': 'status', 'status': 'Using knowledge base...', 'done': False})}\n\n"
-            await asyncio.sleep(0.1)
-            answer = AI_KNOWLEDGE[best_topic]["answer"]
-            sources = []
-            source_type = "Knowledge Base"
-
-        # Send metadata so frontend knows source type
-        yield f"data: {json.dumps({'type': 'metadata', 'source_type': source_type, 'from_web_search': use_web, 'done': False})}\n\n"
-
-        # Stream the answer word by word
-        words = answer.split(' ')
-        for word in words:
-            text_chunk = {"type": "text", "content": word + " ", "done": False}
+            status = {"type": "status", "status": "💭 Using knowledge base...", "done": False}
+            yield f"data: {json.dumps(status)}\n\n"
+            await asyncio.sleep(0.2)
+        
+        # Stream answer
+        answer = response["answer"]
+        chunks = answer.split(' ')
+        
+        for chunk in chunks:
+            text_chunk = {"type": "text", "content": chunk + " ", "done": False}
             yield f"data: {json.dumps(text_chunk)}\n\n"
-            await asyncio.sleep(0.012)
-
-        # Send sources
-        if sources:
-            yield f"data: {json.dumps({'type': 'sources', 'sources': sources, 'done': False})}\n\n"
-
+            await asyncio.sleep(0.01)
+        
+        # Sources
+        if response["sources"]:
+            sources_chunk = {"type": "sources", "sources": response["sources"], "done": False}
+            yield f"data: {json.dumps(sources_chunk)}\n\n"
+        
+        # Suggestions
+        if response.get("suggestions"):
+            suggestions_chunk = {"type": "suggestions", "suggestions": response["suggestions"], "done": False}
+            yield f"data: {json.dumps(suggestions_chunk)}\n\n"
+        
         # Done
-        yield f"data: {json.dumps({'type': 'done', 'source_type': source_type, 'done': True})}\n\n"
-
+        done_chunk = {
+            "type": "done",
+            "confidence": response["confidence"],
+            "source_type": response["source_type"],
+            "done": True
+        }
+        yield f"data: {json.dumps(done_chunk)}\n\n"
+    
     return StreamingResponse(generate(), media_type="text/event-stream")
-
-# ============================================================
-# PART 6: CHAT HISTORY ENDPOINTS
-# ============================================================
-
-
-@app.get("/history")
-def list_history():
-    """List all saved conversations"""
-    conversations = []
-    for file_path in sorted(
-        HISTORY_DIR.glob("*.json"),
-        key=lambda f: f.stat().st_mtime,
-        reverse=True,
-    ):
-        try:
-            data = json.loads(file_path.read_text(encoding="utf-8"))
-            conversations.append(
-                {
-                    "id": data.get("id", file_path.stem),
-                    "title": data.get("title", "Untitled"),
-                    "message_count": len(data.get("messages", [])),
-                    "created_at": data.get("created_at"),
-                    "updated_at": data.get("updated_at"),
-                }
-            )
-        except Exception:
-            continue
-    return {"conversations": conversations}
-
-
-@app.get("/history/{conversation_id}")
-def get_history(conversation_id: str):
-    """Get a specific conversation by ID"""
-    file_path = HISTORY_DIR / f"{conversation_id}.json"
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="Conversation not found")
-    data = json.loads(file_path.read_text(encoding="utf-8"))
-    return data
-
-
-@app.post("/history")
-def save_history(conversation: ConversationModel):
-    """Save or update a conversation"""
-    conv_id = conversation.id or str(uuid.uuid4())
-    now = datetime.now().isoformat()
-
-    data = {
-        "id": conv_id,
-        "title": conversation.title,
-        "messages": [m.model_dump() for m in conversation.messages],
-        "created_at": conversation.created_at or now,
-        "updated_at": now,
-    }
-
-    file_path = HISTORY_DIR / f"{conv_id}.json"
-    file_path.write_text(
-        json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
-
-    return {"id": conv_id, "status": "saved"}
-
-
-@app.delete("/history/{conversation_id}")
-def delete_history(conversation_id: str):
-    """Delete a conversation"""
-    file_path = HISTORY_DIR / f"{conversation_id}.json"
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="Conversation not found")
-    file_path.unlink()
-    return {"status": "deleted"}
-
 
 if __name__ == "__main__":
     import uvicorn
-
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
