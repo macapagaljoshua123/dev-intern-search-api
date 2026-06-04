@@ -38,7 +38,7 @@ dev-intern-search-api/
 
 ---
 
-## Requirements
+Requirements
 
 Make sure the following are installed on your machine before proceeding:
 
@@ -47,13 +47,13 @@ Make sure the following are installed on your machine before proceeding:
 | Node.js | 18+ | https://nodejs.org |
 | Python | 3.12+ | https://python.org |
 | npm | bundled with Node.js | — |
+| Google Gemini API Key | Free | https://aistudio.google.com/ |
 
 > **Verify your installations** by running in terminal:
 > ```bash
 > node -v
 > python --version
 > ```
-
 ---
 
 ## Getting Started
