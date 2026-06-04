@@ -1,4 +1,4 @@
-# 🔍 dev-intern-search-api
+#  dev-intern-search-api
 
 A lightweight web search app with a **TypeScript + React** frontend and a **Python FastAPI** backend using DuckDuckGo — no API key required.
 
@@ -20,7 +20,7 @@ dev-intern-search-api/
 
 ---
 
-## ⚙️ Requirements
+##  Requirements
 
 Make sure the following are installed on your machine before proceeding:
 
@@ -38,13 +38,13 @@ Make sure the following are installed on your machine before proceeding:
 
 ---
 
-## 🚀 Getting Started
+##  Getting Started
 
 You need to run **two terminals** simultaneously — one for the backend, one for the frontend.
 
 ---
 
-### 1️⃣ Backend Setup (FastAPI)
+### 1️ Backend Setup (FastAPI)
 
 Open a terminal and run the following commands:
 
@@ -68,11 +68,11 @@ pip install -r requirements.txt
 uvicorn app:app --reload --host 0.0.0.0 --port 8000
 ```
 
-✅ Backend is running at: **http://127.0.0.1:8000**
+ Backend is running at: **http://127.0.0.1:8000**
 
 ---
 
-### 2️⃣ Frontend Setup (React + Vite)
+### 2️ Frontend Setup (React + Vite)
 
 Open a **second terminal** and run:
 
@@ -87,7 +87,7 @@ npm install
 npm run dev
 ```
 
-✅ Frontend is running at: **http://localhost:5173**
+ Frontend is running at: **http://localhost:5173**
 
 ---
 
@@ -97,13 +97,13 @@ Once both servers are running:
 
 | Service | URL |
 |---------|-----|
-| 🖥️ Frontend (Landing Page) | http://localhost:5173 |
-| ⚡ Backend API | http://127.0.0.1:8000 |
-| 📄 API Docs (Swagger UI) | http://127.0.0.1:8000/docs |
+|  Frontend (Landing Page) | http://localhost:5173 |
+|  Backend API | http://127.0.0.1:8000 |
+|  API Docs (Swagger UI) | http://127.0.0.1:8000/docs |
 
 ---
 
-## 📡 API Endpoints
+##  API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -117,7 +117,7 @@ http://127.0.0.1:8000/search?q=michael+jackson
 
 ---
 
-## 🐛 Troubleshooting
+##  Troubleshooting
 
 ### `ModuleNotFoundError: No module named 'ddgs'`
 The DuckDuckGo search package is missing. Install it manually:
@@ -146,14 +146,14 @@ npm run dev -- --port 3000
 
 ---
 
-## 🔄 Development Workflow
+##  Development Workflow
 
 - **Backend changes:** Uvicorn auto-reloads when you save `app.py` (thanks to `--reload` flag).
 - **Frontend changes:** Vite hot-reloads automatically — no restart needed.
 
 ---
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
@@ -164,6 +164,3 @@ npm run dev -- --port 3000
 
 ---
 
-## 👨‍💻 Developer
-
-**Joshua Macapagal**
