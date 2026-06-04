@@ -8,17 +8,24 @@ AI-powered web search app with a **TypeScript + React** frontend and a **Python 
 
 ```
 dev-intern-search-api/
-├── backend/          # FastAPI Python backend
-│   ├── app.py
-│   └── requirements.txt
-├── frontend/         # React + TypeScript (Vite) frontend
+├── backend/
+│   ├── app.py                 # FastAPI application with AI chat
+│   ├── requirements.txt       # Python dependencies
+│   ├── .env                   # API keys (NOT committed)
+│   └── venv/                  # Virtual environment
+├── frontend/
 │   ├── src/
-│   ├── package.json
-│   └── vite.config.ts
-└── README.md
+│   │   ├── components/
+│   │   │   ├── AIChat.tsx     # Main AI chat component
+│   │   │   └── ...            # Other components
+│   │   ├── App.tsx            # Main app component
+│   │   └── main.tsx           # Entry point
+│   ├── package.json           # Node.js dependencies
+│   └── index.html             # HTML template
+└── README.md                  # This file
 ```
 
-##  Features
+## Features
 
 -  **AI Chat Assistant** powered by Google Gemini AI
 -  **Web Search** using DuckDuckGo (no API key needed)
@@ -31,7 +38,7 @@ dev-intern-search-api/
 
 ---
 
-##  Requirements
+## Requirements
 
 Make sure the following are installed on your machine before proceeding:
 
@@ -49,7 +56,7 @@ Make sure the following are installed on your machine before proceeding:
 
 ---
 
-##  Getting Started
+## Getting Started
 
 You need to run **two terminals** simultaneously — one for the backend, one for the frontend.
 
@@ -79,7 +86,7 @@ pip install -r requirements.txt
 uvicorn app:app --reload --host 0.0.0.0 --port 8000
 ```
 
- Backend is running at: **http://127.0.0.1:8000**
+Backend is running at: **http://127.0.0.1:8000**
 
 ---
 
@@ -98,7 +105,7 @@ npm install
 npm run dev
 ```
 
- Frontend is running at: **http://localhost:5173**
+Frontend is running at: **http://localhost:5173**
 
 ---
 
@@ -114,7 +121,7 @@ Once both servers are running:
 
 ---
 
-##  API Endpoints
+## API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -128,7 +135,7 @@ http://127.0.0.1:8000/search?q=michael+jackson
 
 ---
 
-##  Troubleshooting
+## Troubleshooting
 
 ### `ModuleNotFoundError: No module named 'ddgs'`
 The DuckDuckGo search package is missing. Install it manually:
@@ -157,14 +164,14 @@ npm run dev -- --port 3000
 
 ---
 
-##  Development Workflow
+## Development Workflow
 
 - **Backend changes:** Uvicorn auto-reloads when you save `app.py` (thanks to `--reload` flag).
 - **Frontend changes:** Vite hot-reloads automatically — no restart needed.
 
 ---
 
-##  Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
@@ -180,11 +187,45 @@ Backend Dependencies (backend/requirements.txt)
 
 | Package | Version | Purpose |
 |--------|----------|-------------|
-| `fastapi` | `	0.115.0` | Web framework for API |
-| `uvicorn` | `	0.30.0` | ASGI server |
-| `ddgs` | `	9.0.0` | 	DuckDuckGo search API |
-| `python-dotenv` | `1.0.0` | Environment variable management |
-| `google-generativeai` | `0.8.0` | 	Google Gemini AI integration |
-| `httpx` | `0.27.0` | 	Async HTTP client for web scraping |
+| `fastapi` | `	0.115.0 ` | Web framework for API |
+| `uvicorn` | `	0.30.0 ` | ASGI server |
+| `ddgs` | `	9.0.0 ` | 	DuckDuckGo search API |
+| `python-dotenv` | ` 1.0.0 ` | Environment variable management |
+| `google-generativeai` | ` 0.8.0 ` | 	Google Gemini AI integration |
+| `httpx` | ` 0.27.0 ` | 	Async HTTP client for web scraping |
+---
+
+---
+Frontend Dependencies (frontend/package.json)
+
+| Package | Version | Purpose |
 |--------|----------|-------------|
+| `react` | `	^18.2.0` | 	UI framework |
+| `react-dom` | `		^18.2.0 ` | 	DOM rendering |
+| `axios` | `		^1.6.0 ` | 		HTTP client for API calls |
+| `vite` | ` 	^5.0.0 ` | 	Build tool and dev server |
+| `typescript` | ` 	^5.2.0 ` | 		Type safety |
+---
+
+---
+Getting Your Gemini API Key (Free)
+1. Go to Google AI Studio
+
+2. Sign in with your Google account
+
+3. Click "Get API key"
+
+4. Click "Create API key"
+
+5. Give it a name (e.g., "dev-intern-search")
+
+6. Copy your API key
+
+7. Create a .env file in the backend/ folder:
+
+```text
+Set-GEMINI_API_KEY=your_api_key_here
+```
+
+Important: Never commit your .env file to GitHub! Add it to .gitignore.
 ---
