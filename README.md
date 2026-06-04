@@ -118,6 +118,7 @@ Once both servers are running:
 |  Frontend (Landing Page) | http://localhost:5173 |
 |  Backend API | http://127.0.0.1:8000 |
 |  API Docs (Swagger UI) | http://127.0.0.1:8000/docs |
+|  Health Check | http://127.0.0.1:8000/health |
 
 ---
 
@@ -127,10 +128,27 @@ Once both servers are running:
 |--------|----------|-------------|
 | `GET` | `/search?q=your+query` | Perform a DuckDuckGo web search |
 | `GET` | `/health` | Health check for the backend |
+| `GET` | `/` | API information |
 
 **Example request:**
 ```
-http://127.0.0.1:8000/search?q=michael+jackson
+curl -X POST http://127.0.0.1:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "What is photosynthesis?"}'
+```
+
+**Example response:**
+```
+{
+  "answer": "## Photosynthesis\n\nPhotosynthesis is the process...",
+  "sources": [
+    {
+      "title": "Photosynthesis - Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Photosynthesis",
+      "snippet": "Photosynthesis is a process used by plants..."
+    }
+  ]
+}
 ```
 
 ---
@@ -226,6 +244,23 @@ Getting Your Gemini API Key (Free)
 ```text
 Set-GEMINI_API_KEY=your_api_key_here
 ```
-
 Important: Never commit your .env file to GitHub! Add it to .gitignore.
 ---
+
+---
+
+How It Works
+1. User asks a question in the chat interface
+
+2. Backend searches the web using DuckDuckGo
+
+3. Top results are scraped for detailed content
+
+4. Gemini AI processes the question + search results
+
+5. AI generates a formatted answer with:
+• Main explanation from its knowledge base
+• Enhanced information from web search
+•Properly cited sources
+
+6. Frontend displays the beautiful formatted response
