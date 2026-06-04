@@ -50,9 +50,3 @@ Example: `http://127.0.0.1:8000/search?q=michael+jackson`
 
 - Edit backend code, then restart uvicorn (or use `--reload`).
 - Frontend uses Vite; changes are hot-reloaded by default.
-
-## Contributing
-
-If you'd like me to update README further (translate to Filipino, add screenshots, or include CI instructions), tell me what to include and I’ll update it.
-
----
