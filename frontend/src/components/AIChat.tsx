@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import './AIChat.css';
 
 interface Message {
@@ -11,6 +13,14 @@ interface Message {
 }
 
 const AIChat: React.FC = () => {
+    const [sessions, setSessions] = useState<{id: string, title: string, messages: Message[]}[]>(() => {
+        const saved = localStorage.getItem('chatSessions');
+        if (saved) {
+            try { return JSON.parse(saved); } catch (e) {}
+        }
+        return [];
+    });
+    const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -22,7 +32,40 @@ const AIChat: React.FC = () => {
 
     useEffect(() => {
         scrollToBottom();
+        
+        // Save session to history whenever messages change
+        if (messages.length > 0) {
+            let sessionId = currentSessionId;
+            let newSessions = [...sessions];
+            
+            if (!sessionId) {
+                sessionId = Date.now().toString();
+                setCurrentSessionId(sessionId);
+                const title = messages[0].text.substring(0, 30) + (messages[0].text.length > 30 ? '...' : '');
+                newSessions.unshift({ id: sessionId, title, messages });
+            } else {
+                const sessionIndex = newSessions.findIndex(s => s.id === sessionId);
+                if (sessionIndex !== -1) {
+                    newSessions[sessionIndex].messages = messages;
+                }
+            }
+            setSessions(newSessions);
+            localStorage.setItem('chatSessions', JSON.stringify(newSessions));
+        }
     }, [messages]);
+
+    const loadSession = (id: string) => {
+        const session = sessions.find(s => s.id === id);
+        if (session) {
+            setCurrentSessionId(session.id);
+            setMessages(session.messages);
+        }
+    };
+
+    const handleNewChat = () => {
+        setCurrentSessionId(null);
+        setMessages([]);
+    };
 
     const sendMessage = async (overrideText?: string) => {
         const textToSend = overrideText || inputValue;
@@ -67,15 +110,13 @@ const AIChat: React.FC = () => {
     const renderAnswer = (message: Message) => {
         if (!message.answer) return <p>{message.text}</p>;
         
-        let html = message.answer
-            .replace(/## (.*?)(?:\n|$)/g, '<h2>$1</h2>')
-            .replace(/### (.*?)(?:\n|$)/g, '<h3>$1</h3>')
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/^• (.*?)$/gm, '<li>$1</li>')
-            .replace(/<li>.*?<\/li>/gs, match => `<ul>${match}</ul>`)
-            .replace(/\n/g, '<br/>');
-        
-        return <div dangerouslySetInnerHTML={{ __html: html }} />;
+        return (
+            <div className="markdown-body">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {message.answer}
+                </ReactMarkdown>
+            </div>
+        );
     };
 
     return (
@@ -87,14 +128,30 @@ const AIChat: React.FC = () => {
                         <span className="logo-text">AI Assistant</span>
                         <span className="badge">Web Search</span>
                     </div>
-                    <button className="new-chat-btn" onClick={() => setMessages([])}>
+                    <button className="new-chat-btn" onClick={handleNewChat}>
                         + New Chat
                     </button>
                 </div>
                 <div className="sidebar-history">
-                    <div className="history-section">TODAY</div>
-                    <div className="history-item">What's the latest AI news tod...</div>
-                    <div className="history-item">What's the latest AI news today? H...</div>
+                    <div className="history-section">HISTORY</div>
+                    {sessions.map(session => (
+                        <div 
+                            key={session.id} 
+                            className="history-item" 
+                            onClick={() => loadSession(session.id)}
+                            style={{ 
+                                color: currentSessionId === session.id ? 'var(--text-main)' : 'var(--text-muted)',
+                                fontWeight: currentSessionId === session.id ? '600' : 'normal'
+                            }}
+                        >
+                            {session.title}
+                        </div>
+                    ))}
+                    {sessions.length === 0 && (
+                        <div className="history-item" style={{ fontStyle: 'italic', opacity: 0.5 }}>
+                            No past chats
+                        </div>
+                    )}
                 </div>
             </aside>
 
