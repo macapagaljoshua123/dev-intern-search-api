@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { Sun, Moon, Sparkles, Globe, Paperclip, Mic, Send } from 'lucide-react';
 import './AIChat.css';
 
 interface Message {
@@ -13,6 +14,9 @@ interface Message {
 }
 
 const AIChat: React.FC = () => {
+    const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+        return (localStorage.getItem('appTheme') as 'dark' | 'light') || 'dark';
+    });
     const [sessions, setSessions] = useState<{id: string, title: string, messages: Message[]}[]>(() => {
         const saved = localStorage.getItem('chatSessions');
         if (saved) {
@@ -25,6 +29,14 @@ const AIChat: React.FC = () => {
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        localStorage.setItem('appTheme', theme);
+    }, [theme]);
+
+    const toggleTheme = () => {
+        setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+    };
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -124,13 +136,22 @@ const AIChat: React.FC = () => {
     };
 
     return (
-        <div className="app-container">
+        <div className="app-container" data-theme={theme}>
             <aside className="sidebar">
                 <div className="sidebar-header">
-                    <div className="logo-area">
-                        <div className="logo-icon">🤖</div>
-                        <span className="logo-text">AI Assistant</span>
-                        <span className="badge">Web Search</span>
+                    <div className="logo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span className="logo-icon"><Sparkles size={20} /></span>
+                            <span className="logo-text">AI Assistant</span>
+                            <span className="badge">Web Search</span>
+                        </div>
+                        <button 
+                            onClick={toggleTheme} 
+                            style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer', fontSize: '1.2rem', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            title="Toggle Theme"
+                        >
+                            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                        </button>
                     </div>
                     <button className="new-chat-btn" onClick={handleNewChat}>
                         + New Chat
@@ -163,26 +184,23 @@ const AIChat: React.FC = () => {
                 {messages.length === 0 ? (
                     <div className="empty-state">
                         <div className="main-logo">
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M12 2v4m0 12v4M4 12H2m20 0h-2m-2.8-7.2l-2.8 2.8M7.6 16.4l-2.8 2.8m11.6 0l-2.8-2.8M7.6 7.6L4.8 4.8" />
-                                <circle cx="12" cy="12" r="3" fill="white" />
-                            </svg>
+                            <Sparkles size={48} />
                         </div>
                         <h1>What can I help you with?</h1>
                         <p className="subtitle">Ask anything — I'll search the web and give you accurate answers.</p>
                         
                         <div className="suggestions-grid">
                             <button className="suggestion-btn" onClick={() => sendMessage("Latest AI news")}>
-                                <span className="icon">🌐</span> Latest AI news
+                                <span className="icon"><Globe size={16} /></span> Latest AI news
                             </button>
                             <button className="suggestion-btn" onClick={() => sendMessage("Explain React")}>
-                                <span className="icon">⚛️</span> Explain React
+                                <span className="icon"><Sparkles size={16} /></span> Explain React
                             </button>
                             <button className="suggestion-btn" onClick={() => sendMessage("Python basics")}>
-                                <span className="icon">🐍</span> Python basics
+                                <span className="icon"><Globe size={16} /></span> Python basics
                             </button>
                             <button className="suggestion-btn" onClick={() => sendMessage("Market trends")}>
-                                <span className="icon">📈</span> Market trends
+                                <span className="icon"><Globe size={16} /></span> Market trends
                             </button>
                         </div>
                     </div>
@@ -232,16 +250,18 @@ const AIChat: React.FC = () => {
                         <div className="input-actions">
                             <div className="left-actions">
                                 <button className="action-btn" onClick={() => sendMessage()}>
-                                    <span className="icon">🌐</span> Search
+                                    <span className="icon"><Globe size={16} /></span> Search
                                 </button>
                                 <button className="action-btn">
-                                    <span className="icon">📎</span> Attach
+                                    <span className="icon"><Paperclip size={16} /></span> Attach
+                                </button>
+                                <button className="action-btn">
+                                    <span className="icon"><Mic size={16} /></span> Voice
                                 </button>
                             </div>
                             <div className="right-actions">
-                                <button className="icon-btn">🎤</button>
                                 <button className="icon-btn send" onClick={() => sendMessage()} disabled={isLoading || !inputValue.trim()}>
-                                    ↑
+                                    <Send size={18} />
                                 </button>
                             </div>
                         </div>
