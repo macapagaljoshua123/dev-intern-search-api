@@ -39,7 +39,7 @@ class MarginaliaProvider:
     @staticmethod
     async def search(query: str, max_results: int = 10) -> List[Dict]:
         try:
-            async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+            async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.get(
                     "https://search.marginalia.nu/search",
                     params={
