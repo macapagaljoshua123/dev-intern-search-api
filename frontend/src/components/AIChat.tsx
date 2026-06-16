@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Sun, Moon, Sparkles, Globe, Paperclip, Mic, Send, MoreVertical, Trash2, X } from 'lucide-react';
+import { Sun, Moon, Sparkles, Globe, Paperclip, Mic, Send } from 'lucide-react';
 import './AIChat.css';
 
 interface Message {
@@ -14,11 +14,6 @@ interface Message {
     displayText?: string;
     isAnimating?: boolean;
 }
-
-type LoadingStage = 'idle' | 'searching' | 'scraping' | 'generating';
-
-// Type for timeout/interval (browser environment)
-type TimerId = ReturnType<typeof setTimeout> | null;
 
 const AIChat: React.FC = () => {
     const [theme, setTheme] = useState<'dark' | 'light'>(() => {
@@ -35,6 +30,10 @@ const AIChat: React.FC = () => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [loadingStage, setLoadingStage] = useState<'idle' | 'searching' | 'scraping' | 'generating'>('idle');
+    const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+    // Use number instead of NodeJS.Timeout for browser compatibility
+    const streamingIntervalRef = useRef<number | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     // Helper to get loading text based on stage
@@ -117,7 +116,7 @@ const AIChat: React.FC = () => {
                 : msg
         ));
         
-        streamingIntervalRef.current = setInterval(animate, 50); // Smooth 15ms per frame
+        streamingIntervalRef.current = window.setInterval(animate, 50);
     };
 
     useEffect(() => {
@@ -175,6 +174,7 @@ const AIChat: React.FC = () => {
         setMessages(prev => [...prev, userMessage]);
         setInputValue('');
         setIsLoading(true);
+        setLoadingStage('searching');
 
         try {
             const response = await axios.post('http://127.0.0.1:8000/chat', {
@@ -187,8 +187,16 @@ const AIChat: React.FC = () => {
                 isUser: false,
                 answer: response.data.answer,
                 sources: response.data.sources,
+                displayText: '',
+                isAnimating: false
             };
             setMessages(prev => [...prev, aiMessage]);
+            
+            // Start streaming animation for the new message
+            setTimeout(() => {
+                startStreamingAnimation(aiMessage.id, response.data.answer);
+            }, 100);
+            
         } catch (error) {
             console.error('Error:', error);
             const errorMessage: Message = {
@@ -196,21 +204,27 @@ const AIChat: React.FC = () => {
                 text: 'Error',
                 isUser: false,
                 answer: '## Sorry, something went wrong.\n\nPlease make sure the backend server is running on port 8000.\n\n**Check:**\n• Backend is running with `uvicorn app:app --reload`\n• Gemini API key is set in `.env` file',
+                displayText: '',
+                isAnimating: false
             };
             setMessages(prev => [...prev, errorMessage]);
         } finally {
             setIsLoading(false);
+            setLoadingStage('idle');
         }
     };
 
     const renderAnswer = (message: Message) => {
         if (!message.answer) return <p>{message.text}</p>;
-        const processedAnswer = message.answer.replace(/• /g, '\n- ');
+        
+        // Use displayText if available (streaming), otherwise use full answer
+        const textToRender = message.displayText || message.answer;
+        const processedAnswer = textToRender.replace(/• /g, '\n- ');
         
         return (
             <div className={`markdown-body ${message.isAnimating ? 'streaming-text' : ''}`}>
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {textToRender}
+                    {processedAnswer}
                 </ReactMarkdown>
                 {message.isAnimating && (
                     <span className="typing-cursor">|</span>
@@ -296,20 +310,30 @@ const AIChat: React.FC = () => {
                                     {msg.isUser ? msg.text : renderAnswer(msg)}
                                 </div>
                                 {msg.sources && msg.sources.length > 0 && !msg.isUser && (
-                                    <div className="sources">
-                                        <strong>📚 Sources:</strong>
-                                        {msg.sources.map((src, idx) => (
-                                            <a key={idx} href={src.url} target="_blank" rel="noopener noreferrer" className="source-link">
-                                                {src.title || src.url}
-                                            </a>
-                                        ))}
-                                    </div>
-                                )}
+    <div className="sources">
+        <strong>📚 Sources:</strong>
+        <div className="sources-list">
+            {msg.sources.map((src, idx) => (
+                <a 
+                    key={idx} 
+                    href={src.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="source-link"
+                >
+                    {src.title || `Source ${idx + 1}`}
+                </a>
+            ))}
+        </div>
+    </div>
+)}
                             </div>
                         ))}
                         {isLoading && (
                             <div className="message ai">
-                                <div className="message-content">Searching the web and thinking...</div>
+                                <div className="message-content">
+                                    {getLoadingIcon()} {getLoadingText()}
+                                </div>
                             </div>
                         )}
                         <div ref={messagesEndRef} />

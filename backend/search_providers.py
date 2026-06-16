@@ -1,195 +1,92 @@
-"""
-Multiple search providers - lahat free, may fallback kung may mawala
-"""
+"""Search providers for the AI assistant."""
 
-from ddgs import DDGS
-import httpx
+import os
+import requests
+from urllib.parse import quote
 from typing import List, Dict, Optional
-import asyncio
 
-class DuckDuckGoProvider:
-    """DuckDuckGo search - no API key needed, unlimited"""
+class SearchProvider:
+    """Base class for search providers."""
     
-    name = "DuckDuckGo"
+    def search(self, query: str) -> Dict:
+        raise NotImplementedError
+
+class WikipediaSearch(SearchProvider):
+    """Wikipedia search provider."""
     
-    @staticmethod
-    async def search(query: str, max_results: int = 10) -> List[Dict]:
+    def search(self, query: str) -> Dict:
         try:
-            with DDGS() as ddgs:
-                results = list(ddgs.text(query, max_results=max_results))
-                return [
-                    {
-                        "title": r.get("title", ""),
-                        "url": r.get("href", ""),
-                        "snippet": r.get("body", ""),
-                        "source": "DuckDuckGo"
+            url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{quote(query)}"
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            response = requests.get(url, headers=headers, timeout=5)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('extract'):
+                    return {
+                        "answer": f"**{data.get('title', query)}**:\n\n{data.get('extract', '')[:1000]}",
+                        "sources": [{
+                            "title": data.get('title', query),
+                            "url": f"https://en.wikipedia.org/wiki/{quote(data.get('title', query))}"
+                        }],
+                        "search_performed": True
                     }
-                    for r in results
-                ]
         except Exception as e:
-            print(f"DuckDuckGo error: {e}")
-            return []
-
-
-class MarginaliaProvider:
-    """Marginalia Search - no API key needed, uses 'public' as key"""
-    
-    name = "Marginalia"
-    
-    @staticmethod
-    async def search(query: str, max_results: int = 10) -> List[Dict]:
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.get(
-                    "https://search.marginalia.nu/search",
-                    params={
-                        "query": query,
-                        "count": max_results,
-                        "format": "json"
-                    }
-                )
-                if response.status_code == 200:
-                    data = response.json()
-                    results = data.get("results", [])
-                    return [
-                        {
-                            "title": r.get("title", ""),
-                            "url": r.get("url", ""),
-                            "snippet": r.get("snippet", ""),
-                            "source": "Marginalia"
-                        }
-                        for r in results[:max_results]
-                    ]
-        except Exception as e:
-            print(f"Marginalia error: {e}")
-        return []
-
-
-class BraveProvider:
-    """Brave Search - needs API key pero may $5 free credits/month"""
-    
-    name = "Brave"
-    
-    @staticmethod
-    async def search(query: str, api_key: Optional[str] = None, max_results: int = 10) -> List[Dict]:
-        if not api_key:
-            return []
-        
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.get(
-                    "https://api.search.brave.com/res/v1/web/search",
-                    headers={
-                        "Accept": "application/json",
-                        "X-Subscription-Token": api_key
-                    },
-                    params={
-                        "q": query,
-                        "count": max_results
-                    }
-                )
-                if response.status_code == 200:
-                    data = response.json()
-                    results = data.get("web", {}).get("results", [])
-                    return [
-                        {
-                            "title": r.get("title", ""),
-                            "url": r.get("url", ""),
-                            "snippet": r.get("description", ""),
-                            "source": "Brave"
-                        }
-                        for r in results[:max_results]
-                    ]
-        except Exception as e:
-            print(f"Brave error: {e}")
-        return []
-
-
-class SearchManager:
-    """Manage multiple search providers with fallback"""
-    
-    def __init__(self, brave_api_key: Optional[str] = None):
-        self.providers = [
-            DuckDuckGoProvider(),
-            MarginaliaProvider(),
-        ]
-        self.brave_api_key = brave_api_key
-    
-    async def search(self, query: str, max_results: int = 10) -> Dict:
-        """Try each provider until one works"""
-        
-        # Try DuckDuckGo first (most reliable, no key needed)
-        results = await DuckDuckGoProvider.search(query, max_results)
-        if results:
-            return {
-                "query": query,
-                "results": results,
-                "provider_used": "DuckDuckGo",
-                "total_results": len(results)
-            }
-        
-        # Fallback to Marginalia
-        results = await MarginaliaProvider.search(query, max_results)
-        if results:
-            return {
-                "query": query,
-                "results": results,
-                "provider_used": "Marginalia",
-                "total_results": len(results)
-            }
-        
-        # Optional: Try Brave if API key available
-        if self.brave_api_key:
-            results = await BraveProvider.search(query, self.brave_api_key, max_results)
-            if results:
-                return {
-                    "query": query,
-                    "results": results,
-                    "provider_used": "Brave",
-                    "total_results": len(results)
-                }
-        
-        # If all fail
-        return {
-            "query": query,
-            "results": [],
-            "provider_used": "None",
-            "total_results": 0,
-            "error": "All search providers failed. Please try again later."
-        }
-    
-    async def search_all(self, query: str, max_results: int = 5) -> Dict:
-        """Search from ALL providers simultaneously (for cross-validation)"""
-        
-        tasks = [
-            DuckDuckGoProvider.search(query, max_results),
-            MarginaliaProvider.search(query, max_results),
-        ]
-        
-        if self.brave_api_key:
-            tasks.append(BraveProvider.search(query, self.brave_api_key, max_results))
-        
-        results_list = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        # Combine results
-        all_results = []
-        providers_working = []
-        
-        for i, results in enumerate(results_list):
-            if isinstance(results, list) and results:
-                all_results.extend(results)
-                providers_working.append(self.providers[i].name if i < len(self.providers) else "Brave")
-        
-        # Remove duplicates (by URL)
-        unique_results = {}
-        for r in all_results:
-            url = r.get("url", "")
-            if url and url not in unique_results:
-                unique_results[url] = r
+            print(f"Wikipedia error: {e}")
         
         return {
-            "query": query,
-            "results": list(unique_results.values())[:max_results * 2],
-            "providers_working": providers_working,
-            "total_results": len(unique_results)
+            "answer": "No Wikipedia article found.",
+            "sources": [],
+            "search_performed": False
         }
+
+class GrokSearch(SearchProvider):
+    """Grok AI search provider."""
+    
+    def __init__(self):
+        try:
+            from xai_sdk import Client
+            from xai_sdk.chat import user, system
+            from xai_sdk.tools import web_search
+            
+            api_key = os.getenv("XAI_API_KEY")
+            if api_key:
+                self.client = Client(api_key=api_key)
+                self.available = True
+            else:
+                self.available = False
+        except ImportError:
+            self.available = False
+    
+    def search(self, query: str) -> Dict:
+        if not self.available:
+            return {"answer": "Grok not available", "sources": [], "search_performed": False}
+        
+        try:
+            chat = self.client.chat.create(
+                model=os.getenv("GROK_MODEL", "grok-4.20-reasoning"),
+                tools=[web_search()],
+                include=["verbose_streaming"]
+            )
+            
+            chat.append(system("You are a helpful assistant. Use web search when needed."))
+            chat.append(user(query))
+            
+            response = chat.sample()
+            
+            sources = []
+            if hasattr(response, 'citations') and response.citations:
+                for i, citation in enumerate(response.citations[:5]):
+                    sources.append({
+                        "title": f"Source {i+1}",
+                        "url": citation if isinstance(citation, str) else str(citation)
+                    })
+            
+            return {
+                "answer": response.content,
+                "sources": sources,
+                "search_performed": True
+            }
+        except Exception as e:
+            print(f"Grok error: {e}")
+            return {"answer": f"Error: {e}", "sources": [], "search_performed": False}
