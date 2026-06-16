@@ -1,8 +1,19 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "installCommand": "npm install",
-  "framework": "vite",
-  "rootDirectory": "frontend"
+  "builds": [
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": { "distDir": "dist" }
+    },
+    {
+      "src": "backend/app.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    { "src": "/search(.*)", "dest": "backend/app.py" },
+    { "src": "/health", "dest": "backend/app.py" },
+    { "src": "/(.*)", "dest": "frontend/$1" }
+  ]
 }
