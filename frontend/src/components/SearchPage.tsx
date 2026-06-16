@@ -26,7 +26,7 @@ const SearchPage: React.FC = () => {
     setProviderUsed(null);
 
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/search`, {
+      const response = await axios.get('http://127.0.0.1:8000/search', {
         params: { q: query, max_results: 20 }
       });
 
