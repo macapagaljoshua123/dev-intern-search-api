@@ -252,7 +252,7 @@ const AIChat: React.FC = () => {
         const generatingTimer = setTimeout(() => setLoadingStage('generating'), 2500);
         
         // Send message WITH file contents to backend
-        const response = await axios.post('http://127.0.0.1:8000/chat', {
+        const response = await axios.post(`${import.meta.env.VITE_API_URL}/chat`, {
             message: textToSend,
             history: history,
             files: fileContents  // ← Send actual file content
