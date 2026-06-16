@@ -12,6 +12,12 @@ load_dotenv()
 
 app = FastAPI(title="AI Chat API - Gemini Powered")
 
+import sys
+import os
+
+# Add the directory containing this file to the path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 # ============ CORS MIDDLEWARE ============
 # ✅ FIX: Allow all origins so deployed frontend can call this API
 app.add_middleware(
